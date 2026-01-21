@@ -1,16 +1,11 @@
-import { Platform, ExecutionStatus } from '../types';
+import { Platform, ExecutionStatus, BaseEntity } from '../types';
 
 /**
  * 実行ログエンティティ
  *
  * AI社員の実行履歴を記録
  */
-export interface ExecutionLog {
-  /**
-   * ログの一意識別子
-   */
-  id: string;
-
+export interface ExecutionLog extends BaseEntity {
   /**
    * AI社員ID（外部キー）
    */
@@ -60,9 +55,4 @@ export interface ExecutionLog {
    * エラーメッセージ（エラー時のみ）
    */
   errorMessage?: string;
-
-  /**
-   * 作成日時
-   */
-  createdAt: Date;
 }

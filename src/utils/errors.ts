@@ -73,3 +73,13 @@ export class AIEmployeeNotFoundError extends AIShineError {
     this.name = 'AIEmployeeNotFoundError';
   }
 }
+
+/**
+ * CSV生成エラー（リトライ不可）
+ */
+export class CSVGenerationError extends AIShineError {
+  constructor(message: string) {
+    super(message, 'CSV_GENERATION_ERROR', false);
+    this.name = 'CSVGenerationError';
+  }
+}

@@ -1,5 +1,6 @@
 import { App } from '@slack/bolt';
 import { PlatformAdapter, MessageEvent } from '../PlatformAdapter';
+import { Logger, ConsoleLogger } from '../../utils/logger';
 
 /**
  * Slackアダプター
@@ -8,8 +9,15 @@ import { PlatformAdapter, MessageEvent } from '../PlatformAdapter';
  */
 export class SlackAdapter implements PlatformAdapter {
   private app: App;
+  private logger: Logger;
 
-  constructor(botToken: string, signingSecret: string, appToken?: string) {
+  constructor(
+    botToken: string,
+    signingSecret: string,
+    appToken?: string,
+    logger?: Logger
+  ) {
+    this.logger = logger || new ConsoleLogger();
     this.app = new App({
       token: botToken,
       signingSecret: signingSecret,
@@ -25,7 +33,7 @@ export class SlackAdapter implements PlatformAdapter {
    */
   async start(port: number = 3000): Promise<void> {
     await this.app.start(port);
-    console.log(`⚡️ Slack app is running on port ${port}`);
+    this.logger.info(`⚡️ Slack app is running on port ${port}`);
   }
 
   /**
@@ -138,7 +146,8 @@ export class SlackAdapter implements PlatformAdapter {
 
         await handler(messageEvent);
       } catch (error) {
-        console.error('メンションイベント処理エラー:', error);
+        const err = error instanceof Error ? error : new Error(String(error));
+        this.logger.error('メンションイベント処理エラー', err);
         // エラーをユーザーに通知
         await this.sendMessage(
           event.channel,

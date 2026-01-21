@@ -1,4 +1,5 @@
 import { CompanyData } from '../dify/DifyTypes';
+import { CSVGenerationError } from '../../utils/errors';
 
 /**
  * CSVジェネレーター
@@ -11,10 +12,11 @@ export class CSVGenerator {
    *
    * @param data - 企業データ配列
    * @returns UTF-8 BOM付きCSVバッファ
+   * @throws CSVGenerationError データが空の場合
    */
   generate(data: CompanyData[]): Buffer {
     if (!data || data.length === 0) {
-      throw new Error('CSVデータが空です');
+      throw new CSVGenerationError('CSVデータが空です');
     }
 
     const headers = this.extractHeaders(data);

@@ -2,6 +2,7 @@ import { DifyClient } from '../infrastructure/dify/DifyClient';
 import { CSVGenerator } from '../infrastructure/csv/CSVGenerator';
 import { CompanyData } from '../infrastructure/dify/DifyTypes';
 import { AIShineError } from '../utils/errors';
+import { Logger, ConsoleLogger } from '../utils/logger';
 
 /**
  * ワークフロー実行結果
@@ -39,10 +40,15 @@ export interface WorkflowExecutionResult {
  * Difyワークフロー実行とCSV生成を調整
  */
 export class WorkflowOrchestrator {
+  private logger: Logger;
+
   constructor(
     private difyClient: DifyClient,
-    private csvGenerator: CSVGenerator
-  ) {}
+    private csvGenerator: CSVGenerator,
+    logger?: Logger
+  ) {
+    this.logger = logger || new ConsoleLogger();
+  }
 
   /**
    * ワークフローを実行
@@ -128,7 +134,7 @@ export class WorkflowOrchestrator {
         // 最後の試行でない場合はリトライ
         if (attempt < maxRetries) {
           const delay = Math.pow(2, attempt) * 1000; // 1秒, 2秒, 4秒...
-          console.log(`リトライ ${attempt + 1}/${maxRetries} - ${delay}ms後に再試行...`);
+          this.logger.warn(`リトライ ${attempt + 1}/${maxRetries} - ${delay}ms後に再試行...`);
           await this.sleep(delay);
         }
       }
