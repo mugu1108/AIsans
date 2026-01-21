@@ -1,0 +1,128 @@
+// Prisma Schema for AI-Shine
+// Database: PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// Enums
+// ============================================
+
+/**
+ * プラットフォーム種別
+ */
+enum Platform {
+  SLACK
+  LINE
+  TEAMS
+}
+
+/**
+ * 実行ステータス
+ */
+enum ExecutionStatus {
+  SUCCESS
+  ERROR
+  TIMEOUT
+}
+
+// ============================================
+// Models
+// ============================================
+
+/**
+ * AI社員エンティティ
+ *
+ * 各プラットフォームで動作するAI社員の設定と情報を保持
+ */
+model AIEmployee {
+  /// AI社員の一意識別子
+  id String @id @default(uuid())
+
+  /// AI社員の表示名（例: "営業AI"）
+  name String
+
+  /// メンション文字列（例: "@営業AI"）
+  botMention String
+
+  /// 動作するプラットフォーム
+  platform Platform
+
+  /// 対象チャンネルID
+  channelId String
+
+  /// DifyワークフローID
+  difyWorkflowId String
+
+  /// Dify APIエンドポイント
+  difyApiEndpoint String
+
+  /// 有効/無効フラグ
+  isActive Boolean @default(true)
+
+  /// 作成日時
+  createdAt DateTime @default(now())
+
+  /// 更新日時
+  updatedAt DateTime @updatedAt
+
+  /// 実行ログ（1対多のリレーション）
+  executionLogs ExecutionLog[]
+
+  @@map("ai_employees")
+}
+
+/**
+ * 実行ログエンティティ
+ *
+ * AI社員の実行履歴を記録
+ */
+model ExecutionLog {
+  /// ログの一意識別子
+  id String @id @default(uuid())
+
+  /// AI社員ID（外部キー）
+  aiEmployeeId String
+
+  /// 実行したユーザーのID
+  userId String
+
+  /// 実行したユーザーの表示名
+  userName String
+
+  /// プラットフォーム種別
+  platform Platform
+
+  /// チャンネルID
+  channelId String
+
+  /// 入力されたキーワード
+  inputKeyword String
+
+  /// 実行ステータス
+  status ExecutionStatus
+
+  /// 結果件数（成功時のみ）
+  resultCount Int?
+
+  /// 処理時間（秒）
+  processingTimeSeconds Float?
+
+  /// エラーメッセージ（エラー時のみ）
+  errorMessage String?
+
+  /// 作成日時
+  createdAt DateTime @default(now())
+
+  /// AI社員との関連
+  aiEmployee AIEmployee @relation(fields: [aiEmployeeId], references: [id], onDelete: Cascade)
+
+  @@map("execution_logs")
+}

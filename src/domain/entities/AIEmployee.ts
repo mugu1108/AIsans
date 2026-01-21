@@ -1,16 +1,11 @@
-import { Platform } from '../types';
+import { Platform, UpdatableEntity } from '../types';
 
 /**
  * AI社員エンティティ
  *
  * 各プラットフォームで動作するAI社員の設定と情報を保持
  */
-export interface AIEmployee {
-  /**
-   * AI社員の一意識別子
-   */
-  id: string;
-
+export interface AIEmployee extends UpdatableEntity {
   /**
    * AI社員の表示名（例: "営業AI"）
    */
@@ -45,14 +40,4 @@ export interface AIEmployee {
    * 有効/無効フラグ
    */
   isActive: boolean;
-
-  /**
-   * 作成日時
-   */
-  createdAt: Date;
-
-  /**
-   * 更新日時
-   */
-  updatedAt: Date;
 }
