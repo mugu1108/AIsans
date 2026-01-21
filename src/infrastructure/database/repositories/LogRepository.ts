@@ -1,6 +1,14 @@
 import { ExecutionLog } from '../../../domain/entities/ExecutionLog';
-import { Platform, ExecutionStatus } from '../../../domain/types';
+import { ExecutionStatus } from '../../../domain/types';
 import { prisma } from '../prisma';
+import {
+  toDomainPlatform,
+  toDomainExecutionStatus,
+  toPrismaPlatform,
+  toPrismaExecutionStatus,
+} from '../converters';
+import { DatabaseError } from '../../../utils/errors';
+import { Logger, ConsoleLogger } from '../../../utils/logger';
 import {
   Platform as PrismaPlatform,
   ExecutionStatus as PrismaExecutionStatus,
@@ -12,31 +20,49 @@ import {
  * 実行ログエンティティのデータアクセスを担当
  */
 export class LogRepository {
+  private logger: Logger;
+
+  constructor(logger?: Logger) {
+    this.logger = logger || new ConsoleLogger();
+  }
   /**
    * 実行ログを作成
    *
    * @param log - 実行ログデータ（idとcreatedAtを除く）
    * @returns 作成された実行ログエンティティ
+   * @throws DatabaseError データベースエラー発生時
    */
   async create(
     log: Omit<ExecutionLog, 'id' | 'createdAt'>
   ): Promise<ExecutionLog> {
-    const createdLog = await prisma.executionLog.create({
-      data: {
-        aiEmployeeId: log.aiEmployeeId,
-        userId: log.userId,
-        userName: log.userName,
-        platform: this.toPrismaPlatform(log.platform),
-        channelId: log.channelId,
-        inputKeyword: log.inputKeyword,
-        status: this.toPrismaExecutionStatus(log.status),
-        resultCount: log.resultCount,
-        processingTimeSeconds: log.processingTimeSeconds,
-        errorMessage: log.errorMessage,
-      },
-    });
+    try {
+      this.logger.debug(
+        `実行ログを作成中: aiEmployeeId=${log.aiEmployeeId}, status=${log.status}`
+      );
 
-    return this.toDomainEntity(createdLog);
+      const createdLog = await prisma.executionLog.create({
+        data: {
+          aiEmployeeId: log.aiEmployeeId,
+          userId: log.userId,
+          userName: log.userName,
+          platform: toPrismaPlatform(log.platform),
+          channelId: log.channelId,
+          inputKeyword: log.inputKeyword,
+          status: toPrismaExecutionStatus(log.status),
+          resultCount: log.resultCount,
+          processingTimeSeconds: log.processingTimeSeconds,
+          errorMessage: log.errorMessage,
+        },
+      });
+
+      this.logger.info(`実行ログを作成: id=${createdLog.id}`);
+
+      return this.toDomainEntity(createdLog);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('実行ログ作成エラー', err);
+      throw new DatabaseError(`実行ログの作成に失敗しました: ${err.message}`);
+    }
   }
 
   /**
@@ -45,18 +71,29 @@ export class LogRepository {
    * @param aiEmployeeId - AI社員ID
    * @param limit - 取得件数の上限（デフォルト: 50）
    * @returns 実行ログエンティティの配列（作成日時の降順）
+   * @throws DatabaseError データベースエラー発生時
    */
   async findByAIEmployee(
     aiEmployeeId: string,
     limit: number = 50
   ): Promise<ExecutionLog[]> {
-    const logs = await prisma.executionLog.findMany({
-      where: { aiEmployeeId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    });
+    try {
+      this.logger.debug(`実行ログを検索中: aiEmployeeId=${aiEmployeeId}, limit=${limit}`);
 
-    return logs.map((log) => this.toDomainEntity(log));
+      const logs = await prisma.executionLog.findMany({
+        where: { aiEmployeeId },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      });
+
+      this.logger.info(`実行ログを${logs.length}件取得: aiEmployeeId=${aiEmployeeId}`);
+
+      return logs.map((log) => this.toDomainEntity(log));
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`実行ログ検索エラー: aiEmployeeId=${aiEmployeeId}`, err);
+      throw new DatabaseError(`実行ログの検索に失敗しました: ${err.message}`);
+    }
   }
 
   /**
@@ -64,14 +101,25 @@ export class LogRepository {
    *
    * @param limit - 取得件数の上限（デフォルト: 100）
    * @returns 実行ログエンティティの配列（作成日時の降順）
+   * @throws DatabaseError データベースエラー発生時
    */
   async findRecent(limit: number = 100): Promise<ExecutionLog[]> {
-    const logs = await prisma.executionLog.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    });
+    try {
+      this.logger.debug(`最近の実行ログを取得中: limit=${limit}`);
 
-    return logs.map((log) => this.toDomainEntity(log));
+      const logs = await prisma.executionLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      });
+
+      this.logger.info(`最近の実行ログを${logs.length}件取得しました`);
+
+      return logs.map((log) => this.toDomainEntity(log));
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('実行ログ取得エラー', err);
+      throw new DatabaseError(`実行ログの取得に失敗しました: ${err.message}`);
+    }
   }
 
   /**
@@ -80,18 +128,29 @@ export class LogRepository {
    * @param status - 実行ステータス
    * @param limit - 取得件数の上限（デフォルト: 100）
    * @returns 実行ログエンティティの配列（作成日時の降順）
+   * @throws DatabaseError データベースエラー発生時
    */
   async findByStatus(
     status: ExecutionStatus,
     limit: number = 100
   ): Promise<ExecutionLog[]> {
-    const logs = await prisma.executionLog.findMany({
-      where: { status: this.toPrismaExecutionStatus(status) },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    });
+    try {
+      this.logger.debug(`実行ログを検索中: status=${status}, limit=${limit}`);
 
-    return logs.map((log) => this.toDomainEntity(log));
+      const logs = await prisma.executionLog.findMany({
+        where: { status: toPrismaExecutionStatus(status) },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      });
+
+      this.logger.info(`実行ログを${logs.length}件取得: status=${status}`);
+
+      return logs.map((log) => this.toDomainEntity(log));
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`実行ログ検索エラー: status=${status}`, err);
+      throw new DatabaseError(`実行ログの検索に失敗しました: ${err.message}`);
+    }
   }
 
   /**
@@ -119,58 +178,14 @@ export class LogRepository {
       aiEmployeeId: log.aiEmployeeId,
       userId: log.userId,
       userName: log.userName,
-      platform: this.toDomainPlatform(log.platform),
+      platform: toDomainPlatform(log.platform),
       channelId: log.channelId,
       inputKeyword: log.inputKeyword,
-      status: this.toDomainExecutionStatus(log.status),
+      status: toDomainExecutionStatus(log.status),
       resultCount: log.resultCount ?? undefined,
       processingTimeSeconds: log.processingTimeSeconds ?? undefined,
       errorMessage: log.errorMessage ?? undefined,
       createdAt: log.createdAt,
     };
-  }
-
-  /**
-   * Prisma Platform enumをDomain Platform typeに変換
-   *
-   * @param platform - Prisma Platform enum
-   * @returns Domain Platform type
-   */
-  private toDomainPlatform(platform: PrismaPlatform): Platform {
-    return platform.toLowerCase() as Platform;
-  }
-
-  /**
-   * Domain Platform typeをPrisma Platform enumに変換
-   *
-   * @param platform - Domain Platform type
-   * @returns Prisma Platform enum
-   */
-  private toPrismaPlatform(platform: Platform): PrismaPlatform {
-    return platform.toUpperCase() as PrismaPlatform;
-  }
-
-  /**
-   * Prisma ExecutionStatus enumをDomain ExecutionStatus typeに変換
-   *
-   * @param status - Prisma ExecutionStatus enum
-   * @returns Domain ExecutionStatus type
-   */
-  private toDomainExecutionStatus(
-    status: PrismaExecutionStatus
-  ): ExecutionStatus {
-    return status.toLowerCase() as ExecutionStatus;
-  }
-
-  /**
-   * Domain ExecutionStatus typeをPrisma ExecutionStatus enumに変換
-   *
-   * @param status - Domain ExecutionStatus type
-   * @returns Prisma ExecutionStatus enum
-   */
-  private toPrismaExecutionStatus(
-    status: ExecutionStatus
-  ): PrismaExecutionStatus {
-    return status.toUpperCase() as PrismaExecutionStatus;
   }
 }

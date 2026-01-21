@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { getEnvConfig } from '../../config/env';
 
 /**
  * Prismaクライアントのシングルトンインスタンス
@@ -22,15 +23,17 @@ const getPrismaClient = (): PrismaClient => {
     return global.prisma;
   }
 
+  const env = getEnvConfig();
+
   const client = new PrismaClient({
     log:
-      process.env.NODE_ENV === 'development'
+      env.NODE_ENV === 'development'
         ? ['query', 'info', 'warn', 'error']
         : ['error'],
   });
 
   // 開発環境ではグローバルにキャッシュ
-  if (process.env.NODE_ENV !== 'production') {
+  if (env.NODE_ENV !== 'production') {
     global.prisma = client;
   }
 
