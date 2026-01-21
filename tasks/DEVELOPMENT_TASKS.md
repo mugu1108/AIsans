@@ -1,20 +1,20 @@
 # AI-Shine 開発タスク管理
 
-**最終更新**: 2026-01-20
+**最終更新**: 2026-01-21
 
 ---
 
 ## 📊 進捗状況
 
 ```
-完了: 10/15 タスク (67%)
+完了: 14/15 タスク (93%)
 
 レイヤー別進捗:
-  Domain層:        1/2  (50%)
-  Infrastructure:  7/9  (78%)
-  Application:     1/1  (100%)
-  Interface:       2/2  (100%)
-  統合・テスト:      0/4  (0%)
+  Domain層:        2/2  (100%) ✅
+  Infrastructure:  9/9  (100%) ✅
+  Application:     1/1  (100%) ✅
+  Interface:       2/2  (100%) ✅
+  統合・テスト:      2/3  (67%)
 ```
 
 ---
@@ -68,10 +68,35 @@
   - 内容: 営業AI社員データ登録済み
   - コミット: `74320d0` (feature/database-schema)
 
+- [x] **Task 11**: Repository層実装
+  - ファイル:
+    - `src/infrastructure/database/prisma.ts`
+    - `src/infrastructure/database/repositories/AIEmployeeRepository.ts`
+    - `src/infrastructure/database/repositories/LogRepository.ts`
+    - `src/infrastructure/database/converters.ts`
+  - コミット: `ae822c6`
+
+- [x] **Task 12**: Service層実装
+  - ファイル:
+    - `src/domain/services/AIEmployeeService.ts`
+    - `src/domain/services/LogService.ts`
+  - 機能追加:
+    - メンション正規化、ロギング統合
+    - 統計情報計算機能
+  - コミット: `87e9be9`
+
 ### 統合・テスト
 - [x] **Task 13**: 環境変数管理
   - ファイル: `src/config/env.ts`
   - コミット: `86318a7`
+
+- [x] **Task 14**: メインエントリーポイント
+  - ファイル: `src/index.ts`
+  - 内容:
+    - 全レイヤーの統合（DI）
+    - イベントハンドラ登録
+    - グレースフルシャットダウン
+  - コミット: `851959d`
 
 ---
 
@@ -83,53 +108,94 @@
 
 ## ⏳ 未着手タスク
 
-### Phase 2: データアクセス層
-
-- [ ] **Task 11**: Repository層実装
-  - ファイル:
-    - `src/infrastructure/database/prisma.ts`
-    - `src/infrastructure/database/repositories/AIEmployeeRepository.ts`
-    - `src/infrastructure/database/repositories/LogRepository.ts`
-  - 依存: Task 9
-
-- [ ] **Task 12**: Service層実装
-  - ファイル:
-    - `src/domain/services/AIEmployeeService.ts`
-    - `src/domain/services/LogService.ts`
-  - 依存: Task 11
-
 ### Phase 3: 統合・起動
-
-- [ ] **Task 14**: メインエントリーポイント
-  - ファイル: `src/index.ts`
-  - 内容:
-    - 全レイヤーの統合
-    - DIコンテナ構築
-    - イベントハンドラ登録
-  - 依存: Task 12, Task 13
 
 - [ ] **Task 15**: ビルド＆動作確認
   - 内容:
-    - TypeScriptビルド
-    - ローカル起動テスト
+    - TypeScriptビルド（`npm run build`）
+    - Slack App作成・設定
+    - 環境変数設定（`.env`）
+    - ローカル起動テスト（`npm run dev`）
     - Slackとの接続確認
+    - Difyワークフロー実行テスト
+    - E2Eテスト（メンション → CSV生成）
   - 依存: Task 14
+  - 備考: 実際の外部サービス（Slack, Dify, Supabase）との接続が必要
 
 ---
 
 ## 📝 実装メモ
 
-### Task 8-10: データベース関連
-- Supabase接続情報が必要
-- `.env`ファイルに `DATABASE_URL` と `DIRECT_URL` を設定
+### 📁 現在のファイル構成
+```
+src/
+├── application/
+│   └── WorkflowOrchestrator.ts        ✅
+├── config/
+│   └── env.ts                         ✅
+├── domain/
+│   ├── entities/
+│   │   ├── AIEmployee.ts              ✅
+│   │   └── ExecutionLog.ts            ✅
+│   ├── services/
+│   │   ├── AIEmployeeService.ts       ✅ NEW
+│   │   └── LogService.ts              ✅ NEW
+│   └── types/
+│       └── index.ts                   ✅
+├── infrastructure/
+│   ├── csv/
+│   │   └── CSVGenerator.ts            ✅
+│   ├── database/
+│   │   ├── converters.ts              ✅ NEW
+│   │   ├── prisma.ts                  ✅ NEW
+│   │   └── repositories/
+│   │       ├── AIEmployeeRepository.ts ✅ NEW
+│   │       └── LogRepository.ts       ✅ NEW
+│   └── dify/
+│       ├── DifyClient.ts              ✅
+│       └── DifyTypes.ts               ✅
+├── interfaces/
+│   ├── PlatformAdapter.ts             ✅
+│   └── slack/
+│       └── SlackAdapter.ts            ✅
+├── utils/
+│   ├── errors.ts                      ✅
+│   └── logger.ts                      ✅
+└── index.ts                           ✅ NEW
 
-### Task 14: 統合
-- Socket ModeまたはHTTPモードの選択
-- 環境変数による切り替え
+prisma/
+├── schema.prisma                      ✅
+├── seed.ts                            ✅
+└── migrations/                        ✅
+```
 
-### Task 15: テスト
+### ✅ Phase 1-2 完了
+- ✅ コアレイヤー実装完了
+- ✅ Database基盤構築完了
+- ✅ Repository層実装完了
+- ✅ Service層実装完了
+- ✅ 型変換システム（converters.ts）実装完了
+- ✅ ロギング機能全レイヤー統合完了
+
+### Task 14: 統合（完了）
+- ✅ DIパターンによる依存性注入
+- ✅ グレースフルシャットダウン実装
+- ✅ 環境変数検証とロギング
+
+### Task 15: ビルド＆動作確認（未完了）
 - Slack App作成が必要
-- ボットトークン、Signing Secretの設定
+  - Bot Token Scopes設定
+  - Event Subscriptions設定
+- `.env`ファイルに以下を設定:
+  - `SLACK_BOT_TOKEN`
+  - `SLACK_SIGNING_SECRET`
+  - `DIFY_API_KEY`
+  - `DATABASE_URL`
+  - `DIRECT_URL`
+- ローカル起動テスト（`npm run dev`）
+- ngrok等でトンネル作成（開発時）
+- Slackからメンション送信テスト
+- Dify連携動作確認
 
 ---
 
@@ -149,3 +215,7 @@
 | 2026-01-20 | 初版作成、Task 1-7完了 |
 | 2026-01-20 | Task 8-10完了（Database基盤）|
 | 2026-01-20 | Task 13完了（環境変数管理） |
+| 2026-01-21 | Task 11完了（Repository層）|
+| 2026-01-21 | Task 12完了（Service層）|
+| 2026-01-21 | Task 14完了（メインエントリーポイント）|
+| 2026-01-21 | ロギング機能を全レイヤーに統合 |
