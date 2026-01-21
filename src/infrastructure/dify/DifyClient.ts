@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { DifyWorkflowRequest, DifyWorkflowResponse, DifyErrorResponse } from './DifyTypes';
 import { DifyAPIError, NetworkError, TimeoutError } from '../../utils/errors';
+import { Logger, ConsoleLogger } from '../../utils/logger';
 
 /**
  * Dify APIクライアント
@@ -9,8 +10,10 @@ import { DifyAPIError, NetworkError, TimeoutError } from '../../utils/errors';
  */
 export class DifyClient {
   private client: AxiosInstance;
+  private logger: Logger;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, logger?: Logger) {
+    this.logger = logger || new ConsoleLogger();
     this.client = axios.create({
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -32,6 +35,8 @@ export class DifyClient {
     endpoint: string,
     request: DifyWorkflowRequest
   ): Promise<DifyWorkflowResponse> {
+    this.logger.debug('Difyワークフローを呼び出し中', { endpoint });
+
     try {
       const response = await this.client.post<DifyWorkflowResponse>(
         endpoint,
@@ -40,11 +45,18 @@ export class DifyClient {
 
       // ステータスチェック
       if (response.data.data.status === 'failed') {
-        throw new DifyAPIError(
-          response.data.data.error || 'ワークフロー実行に失敗しました',
-          response.status
-        );
+        const errorMsg = response.data.data.error || 'ワークフロー実行に失敗しました';
+        this.logger.error('Difyワークフローが失敗', new Error(errorMsg), {
+          endpoint,
+          status: response.data.data.status,
+        });
+        throw new DifyAPIError(errorMsg, response.status);
       }
+
+      this.logger.info('Difyワークフロー実行完了', {
+        endpoint,
+        status: response.data.data.status,
+      });
 
       return response.data;
     } catch (error) {
@@ -66,29 +78,41 @@ export class DifyClient {
 
       // タイムアウトエラー
       if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
-        throw new TimeoutError('Dify APIのタイムアウトが発生しました');
+        const timeoutError = new TimeoutError('Dify APIのタイムアウトが発生しました');
+        this.logger.error('Dify APIタイムアウト', timeoutError, {
+          code: axiosError.code,
+        });
+        throw timeoutError;
       }
 
       // ネットワークエラー
       if (!axiosError.response) {
-        throw new NetworkError('Dify APIへの接続に失敗しました');
+        const networkError = new NetworkError('Dify APIへの接続に失敗しました');
+        this.logger.error('Dify API接続エラー', networkError);
+        throw networkError;
       }
 
       // HTTPエラー
       const statusCode = axiosError.response.status;
       const errorMessage = axiosError.response.data?.message || axiosError.message;
+      const apiError = new DifyAPIError(`Dify APIエラー: ${errorMessage}`, statusCode);
 
-      throw new DifyAPIError(
-        `Dify APIエラー: ${errorMessage}`,
-        statusCode
-      );
+      this.logger.error('Dify APIエラー', apiError, {
+        statusCode,
+        errorMessage,
+      });
+      throw apiError;
     }
 
     // その他のエラー
     if (error instanceof Error) {
-      throw new NetworkError(error.message);
+      const networkError = new NetworkError(error.message);
+      this.logger.error('不明なエラー', networkError);
+      throw networkError;
     }
 
-    throw new NetworkError('不明なエラーが発生しました');
+    const unknownError = new NetworkError('不明なエラーが発生しました');
+    this.logger.error('不明なエラー', unknownError);
+    throw unknownError;
   }
 }

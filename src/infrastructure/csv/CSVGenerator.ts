@@ -1,5 +1,6 @@
 import { CompanyData } from '../dify/DifyTypes';
 import { CSVGenerationError } from '../../utils/errors';
+import { Logger, ConsoleLogger } from '../../utils/logger';
 
 /**
  * CSVジェネレーター
@@ -7,6 +8,12 @@ import { CSVGenerationError } from '../../utils/errors';
  * 企業データをCSV形式に変換
  */
 export class CSVGenerator {
+  private logger: Logger;
+
+  constructor(logger?: Logger) {
+    this.logger = logger || new ConsoleLogger();
+  }
+
   /**
    * 企業データをCSVに変換
    *
@@ -15,11 +22,17 @@ export class CSVGenerator {
    * @throws CSVGenerationError データが空の場合
    */
   generate(data: CompanyData[]): Buffer {
+    this.logger.debug('CSV生成を開始', { dataCount: data?.length || 0 });
+
     if (!data || data.length === 0) {
-      throw new CSVGenerationError('CSVデータが空です');
+      const error = new CSVGenerationError('CSVデータが空です');
+      this.logger.error('CSV生成エラー: データが空', error);
+      throw error;
     }
 
     const headers = this.extractHeaders(data);
+    this.logger.debug('CSVヘッダーを抽出', { headers });
+
     const csvLines = [
       headers.join(','),
       ...data.map((row) => this.convertRowToCSV(row, headers)),
@@ -28,10 +41,17 @@ export class CSVGenerator {
     const csvContent = csvLines.join('\n');
 
     // UTF-8 BOM付きで返却（Excel対応）
-    return Buffer.concat([
+    const buffer = Buffer.concat([
       Buffer.from('\uFEFF', 'utf8'),
       Buffer.from(csvContent, 'utf8'),
     ]);
+
+    this.logger.info('CSV生成完了', {
+      rowCount: data.length,
+      bufferSize: buffer.length,
+    });
+
+    return buffer;
   }
 
   /**
