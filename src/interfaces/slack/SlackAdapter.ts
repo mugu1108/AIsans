@@ -44,11 +44,13 @@ export class SlackAdapter implements PlatformAdapter {
    * @param threadTs - スレッドタイムスタンプ（任意）
    */
   async sendMessage(channelId: string, text: string, threadTs?: string): Promise<void> {
+    this.logger.debug('メッセージを送信中', { channelId, threadTs });
     await this.app.client.chat.postMessage({
       channel: channelId,
       text,
       thread_ts: threadTs,
     });
+    this.logger.debug('メッセージを送信完了', { channelId });
   }
 
   /**
@@ -65,12 +67,14 @@ export class SlackAdapter implements PlatformAdapter {
     filename: string,
     comment?: string
   ): Promise<void> {
+    this.logger.debug('ファイルを送信中', { channelId, filename });
     await this.app.client.files.uploadV2({
       channel_id: channelId,
       file: file,
       filename: filename,
       initial_comment: comment,
     });
+    this.logger.info('ファイルを送信完了', { channelId, filename });
   }
 
   /**
@@ -85,6 +89,7 @@ export class SlackAdapter implements PlatformAdapter {
     errorMessage: string,
     threadTs?: string
   ): Promise<void> {
+    this.logger.warn('エラーメッセージを送信中', { channelId, errorMessage });
     await this.app.client.chat.postMessage({
       channel: channelId,
       thread_ts: threadTs,
@@ -125,6 +130,11 @@ export class SlackAdapter implements PlatformAdapter {
   onMention(handler: (event: MessageEvent) => Promise<void>): void {
     this.app.event('app_mention', async ({ event, client }) => {
       try {
+        this.logger.debug('メンションイベントを受信', {
+          userId: event.user,
+          channelId: event.channel,
+        });
+
         // ユーザー情報を取得
         const userInfo = await client.users.info({
           user: event.user!,
@@ -144,7 +154,17 @@ export class SlackAdapter implements PlatformAdapter {
           threadTs: event.thread_ts,
         };
 
+        this.logger.info('メンションイベントを処理中', {
+          userId: messageEvent.userId,
+          userName: messageEvent.userName,
+          mention,
+        });
+
         await handler(messageEvent);
+
+        this.logger.debug('メンションイベント処理完了', {
+          userId: messageEvent.userId,
+        });
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
         this.logger.error('メンションイベント処理エラー', err);

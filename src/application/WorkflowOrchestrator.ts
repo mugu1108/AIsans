@@ -65,8 +65,15 @@ export class WorkflowOrchestrator {
   ): Promise<WorkflowExecutionResult> {
     const startTime = Date.now();
 
+    this.logger.info('ワークフロー実行を開始', {
+      endpoint,
+      keyword,
+      maxRetries,
+    });
+
     try {
       // リトライ付きでDifyワークフロー実行
+      this.logger.debug('Difyワークフローを呼び出し中');
       const response = await this.retryWithBackoff(
         () => this.difyClient.callWorkflow(endpoint, {
           inputs: { keyword },
@@ -77,8 +84,10 @@ export class WorkflowOrchestrator {
 
       // 企業データを取得
       const companies: CompanyData[] = response.data.outputs.companies || [];
+      this.logger.debug(`企業データを取得: ${companies.length}件`);
 
       if (companies.length === 0) {
+        this.logger.warn('検索結果が0件でした', { keyword });
         return {
           success: false,
           errorMessage: '検索結果が0件でした',
@@ -87,16 +96,30 @@ export class WorkflowOrchestrator {
       }
 
       // CSVに変換
+      this.logger.debug('CSV生成中');
       const csvBuffer = this.csvGenerator.generate(companies);
 
-      return {
+      const result = {
         success: true,
         csvBuffer,
         resultCount: companies.length,
         processingTimeSeconds: this.calculateProcessingTime(startTime),
       };
+
+      this.logger.info('ワークフロー実行完了', {
+        resultCount: result.resultCount,
+        processingTimeSeconds: result.processingTimeSeconds,
+      });
+
+      return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+      const err = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = err.message;
+
+      this.logger.error('ワークフロー実行エラー', err, {
+        keyword,
+        endpoint,
+      });
 
       return {
         success: false,
