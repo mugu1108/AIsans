@@ -64,11 +64,6 @@ npm run dev
 - [実装計画書](./docs/IMPLEMENTATION_PLAN.md)
 - [開発ガイドライン](./CLAUDE.md)
 
-## 開発
-
-このプロジェクトはClaude Codeでの開発を推奨しています。
-`CLAUDE.md`に開発時の重要なルールが記載されています。
-
 ```bash
 # Git worktreeを使った並列開発
 git worktree add ../ai-shain-database feature/database-schema
