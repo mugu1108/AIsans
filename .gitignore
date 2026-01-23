@@ -9,6 +9,9 @@ pnpm-lock.yaml
 .env.local
 .env.*.local
 
+# MCP configuration
+.mcp.json
+
 # Build output
 dist/
 build/
