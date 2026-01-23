@@ -64,11 +64,6 @@ npm run dev
 - [実装計画書](./docs/IMPLEMENTATION_PLAN.md)
 - [開発ガイドライン](./CLAUDE.md)
 
-```bash
-# Git worktreeを使った並列開発
-git worktree add ../ai-shain-database feature/database-schema
-```
-
 詳細は[IMPLEMENTATION_PLAN.md](./docs/IMPLEMENTATION_PLAN.md)を参照してください。
 
 ## ライセンス
