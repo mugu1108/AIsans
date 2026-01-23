@@ -45,10 +45,6 @@ ai-shain/
 # 依存関係インストール
 npm install
 
-# 環境変数設定
-cp .env.example .env
-# .envを編集して実際の値を設定
-
 # Prismaセットアップ
 npx prisma migrate dev
 npx prisma generate
