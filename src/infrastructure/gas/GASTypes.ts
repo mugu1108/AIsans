@@ -3,15 +3,29 @@
  */
 export interface GASRequest {
   /**
-   * 検索キーワード（自然言語）
+   * 地域（都道府県、市区町村など）
    */
-  query: string;
+  region: string;
+
+  /**
+   * 業種
+   */
+  industry: string;
 }
 
 /**
  * GAS APIエラーレスポンス
  */
 export interface GASErrorResponse {
+  status?: string;
   error?: string;
   message?: string;
+}
+
+/**
+ * 検索パラメータ（地域と業種）
+ */
+export interface SearchParams {
+  region: string;
+  industry: string;
 }

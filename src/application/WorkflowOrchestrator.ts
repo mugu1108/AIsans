@@ -1,4 +1,5 @@
 import { GASClient } from '../infrastructure/gas/GASClient';
+import { parseQuery } from '../infrastructure/gas/queryParser';
 import { AIShineError } from '../utils/errors';
 import { Logger, ConsoleLogger } from '../utils/logger';
 
@@ -66,10 +67,14 @@ export class WorkflowOrchestrator {
     });
 
     try {
+      // クエリを地域と業種に分解
+      const params = parseQuery(query);
+      this.logger.debug('クエリをパース', { query, params });
+
       // リトライ付きでGAS Webアプリ実行
       this.logger.debug('GAS Webアプリを呼び出し中');
       const csvBuffer = await this.retryWithBackoff(
-        () => this.gasClient.fetchCSV(query),
+        () => this.gasClient.fetchCSV(params.region, params.industry),
         maxRetries
       );
 

@@ -28,17 +28,18 @@ export class GASClient {
   /**
    * GAS Webアプリを呼び出してCSVを取得
    *
-   * @param query - 検索クエリ（自然言語）
+   * @param region - 検索地域
+   * @param industry - 検索業種
    * @returns CSVデータ（Buffer）
    * @throws NetworkError, TimeoutError
    */
-  async fetchCSV(query: string): Promise<Buffer> {
-    this.logger.debug('GAS Webアプリを呼び出し中', { query });
+  async fetchCSV(region: string, industry: string): Promise<Buffer> {
+    this.logger.debug('GAS Webアプリを呼び出し中', { region, industry });
 
     try {
       const response = await this.client.post(
         this.apiUrl,
-        { query } as GASRequest
+        { region, industry } as GASRequest
       );
 
       this.logger.info('GAS Webアプリ呼び出し完了', {
@@ -47,7 +48,7 @@ export class GASClient {
 
       return Buffer.from(response.data);
     } catch (error) {
-      this.handleError(error, query);
+      this.handleError(error, region, industry);
       throw error; // TypeScriptの型チェックのため
     }
   }
@@ -56,10 +57,11 @@ export class GASClient {
    * エラーハンドリング
    *
    * @param error - キャッチされたエラー
-   * @param query - リクエストクエリ
+   * @param region - 検索地域
+   * @param industry - 検索業種
    * @throws 適切なカスタムエラー
    */
-  private handleError(error: unknown, query: string): never {
+  private handleError(error: unknown, region: string, industry: string): never {
     // Axiosエラーの場合
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<GASErrorResponse>;
@@ -69,7 +71,8 @@ export class GASClient {
         const timeoutError = new TimeoutError('GAS APIのタイムアウトが発生しました');
         this.logger.error('GAS APIタイムアウト', timeoutError, {
           code: axiosError.code,
-          query,
+          region,
+          industry,
         });
         throw timeoutError;
       }
@@ -77,7 +80,7 @@ export class GASClient {
       // ネットワークエラー
       if (!axiosError.response) {
         const networkError = new NetworkError('GAS APIへの接続に失敗しました');
-        this.logger.error('GAS API接続エラー', networkError, { query });
+        this.logger.error('GAS API接続エラー', networkError, { region, industry });
         throw networkError;
       }
 
@@ -91,7 +94,8 @@ export class GASClient {
       this.logger.error('GAS APIエラー', networkError, {
         statusCode,
         errorMessage,
-        query,
+        region,
+        industry,
       });
       throw networkError;
     }
@@ -99,12 +103,12 @@ export class GASClient {
     // その他のエラー
     if (error instanceof Error) {
       const networkError = new NetworkError(error.message);
-      this.logger.error('不明なエラー', networkError, { query });
+      this.logger.error('不明なエラー', networkError, { region, industry });
       throw networkError;
     }
 
     const unknownError = new NetworkError('不明なエラーが発生しました');
-    this.logger.error('不明なエラー', unknownError, { query });
+    this.logger.error('不明なエラー', unknownError, { region, industry });
     throw unknownError;
   }
 }

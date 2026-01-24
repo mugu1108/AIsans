@@ -4,6 +4,7 @@
  * 全レイヤーの統合とアプリケーション起動を担当
  */
 
+import 'dotenv/config';
 import { SlackAdapter } from './interfaces/slack/SlackAdapter';
 import { AIEmployeeService } from './domain/services/AIEmployeeService';
 import { LogService } from './domain/services/LogService';
