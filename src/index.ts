@@ -21,10 +21,12 @@ import { AIEmployeeNotFoundError } from './utils/errors';
  * アプリケーション起動
  */
 async function main(): Promise<void> {
+  console.log('🚀 AI-Shine starting...');
   const logger = new ConsoleLogger();
 
   try {
     // 環境変数の検証と読み込み
+    console.log('Loading environment variables...');
     logger.info('環境変数を読み込んでいます...');
     const env = getEnvConfig();
     logEnvironmentSummary();
@@ -89,8 +91,12 @@ async function main(): Promise<void> {
           event.threadTs
         );
 
+        // メンション部分を削除してクエリを抽出
+        const query = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
+        logger.debug('クエリを抽出', { originalText: event.text, query });
+
         // ワークフロー実行
-        const result = await orchestrator.executeWorkflow(event.text);
+        const result = await orchestrator.executeWorkflow(query);
 
         // 結果処理
         if (result.success) {

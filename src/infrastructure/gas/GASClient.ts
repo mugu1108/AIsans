@@ -30,16 +30,17 @@ export class GASClient {
    *
    * @param region - 検索地域
    * @param industry - 検索業種
+   * @param count - 取得件数（デフォルト: 30）
    * @returns CSVデータ（Buffer）
    * @throws NetworkError, TimeoutError
    */
-  async fetchCSV(region: string, industry: string): Promise<Buffer> {
-    this.logger.debug('GAS Webアプリを呼び出し中', { region, industry });
+  async fetchCSV(region: string, industry: string, count: number = 30): Promise<Buffer> {
+    this.logger.debug('GAS Webアプリを呼び出し中', { region, industry, count });
 
     try {
       const response = await this.client.post(
         this.apiUrl,
-        { region, industry } as GASRequest
+        { region, industry, count } as GASRequest
       );
 
       this.logger.info('GAS Webアプリ呼び出し完了', {

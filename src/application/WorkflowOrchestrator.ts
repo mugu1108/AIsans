@@ -74,7 +74,7 @@ export class WorkflowOrchestrator {
       // リトライ付きでGAS Webアプリ実行
       this.logger.debug('GAS Webアプリを呼び出し中');
       const csvBuffer = await this.retryWithBackoff(
-        () => this.gasClient.fetchCSV(params.region, params.industry),
+        () => this.gasClient.fetchCSV(params.region, params.industry, 30),
         maxRetries
       );
 

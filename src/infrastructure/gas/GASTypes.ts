@@ -11,6 +11,11 @@ export interface GASRequest {
    * 業種
    */
   industry: string;
+
+  /**
+   * 取得件数（デフォルト: 30）
+   */
+  count?: number;
 }
 
 /**

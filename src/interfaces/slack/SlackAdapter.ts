@@ -128,8 +128,12 @@ export class SlackAdapter implements PlatformAdapter {
    * @param handler - イベントハンドラ関数
    */
   onMention(handler: (event: MessageEvent) => Promise<void>): void {
+    console.log('📝 onMention ハンドラーを登録しました');
     this.app.event('app_mention', async ({ event, client }) => {
       try {
+        console.log('🔔 app_mention イベントを受信しました!');
+        console.log('  channelId:', event.channel);
+        console.log('  text:', event.text);
         this.logger.debug('メンションイベントを受信', {
           userId: event.user,
           channelId: event.channel,
