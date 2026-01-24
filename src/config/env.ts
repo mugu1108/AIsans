@@ -25,8 +25,8 @@ export interface EnvironmentVariables {
   SLACK_SIGNING_SECRET: string;
   SLACK_APP_TOKEN?: string; // Socket Mode用（任意）
 
-  // Dify
-  DIFY_API_KEY: string;
+  // GAS Web API
+  GAS_API_URL: string;
 
   // サーバー
   PORT: number;
@@ -50,7 +50,7 @@ const REQUIRED_ENV_VARS = [
   'DIRECT_URL',
   'SLACK_BOT_TOKEN',
   'SLACK_SIGNING_SECRET',
-  'DIFY_API_KEY',
+  'GAS_API_URL',
 ] as const;
 
 /**
@@ -147,7 +147,7 @@ function loadEnvironmentVariables(): EnvironmentVariables {
     SLACK_BOT_TOKEN: requireEnv('SLACK_BOT_TOKEN'),
     SLACK_SIGNING_SECRET: requireEnv('SLACK_SIGNING_SECRET'),
     SLACK_APP_TOKEN: getEnv('SLACK_APP_TOKEN'),
-    DIFY_API_KEY: requireEnv('DIFY_API_KEY'),
+    GAS_API_URL: requireEnv('GAS_API_URL'),
     PORT: getPort(),
   };
 
@@ -190,7 +190,7 @@ export function logEnvironmentSummary(): void {
   console.log(`SLACK_BOT_TOKEN:      ${maskToken(env.SLACK_BOT_TOKEN)}`);
   console.log(`SLACK_SIGNING_SECRET: ${maskToken(env.SLACK_SIGNING_SECRET)}`);
   console.log(`SLACK_APP_TOKEN:      ${env.SLACK_APP_TOKEN ? maskToken(env.SLACK_APP_TOKEN) : '(未設定)'}`);
-  console.log(`DIFY_API_KEY:         ${maskToken(env.DIFY_API_KEY)}`);
+  console.log(`GAS_API_URL:          ${maskUrl(env.GAS_API_URL)}`);
   console.log('========================================');
 }
 
@@ -224,6 +224,21 @@ function maskToken(token: string): string {
   const visibleEnd = token.substring(token.length - 4);
 
   return `${visibleStart}****${visibleEnd}`;
+}
+
+/**
+ * URLをマスク（スクリプトID部分のみ表示）
+ *
+ * @param url - URL文字列
+ * @returns マスクされたURL
+ */
+function maskUrl(url: string): string {
+  try {
+    const parsedUrl = new URL(url);
+    return `${parsedUrl.protocol}//${parsedUrl.host}/.../${parsedUrl.pathname.split('/').pop()}`;
+  } catch {
+    return '****';
+  }
 }
 
 // デフォルトエクスポート
