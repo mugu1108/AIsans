@@ -22,15 +22,15 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "prisma": "^5.0.0",
-    "ts-node": "^10.9.0",
-    "typescript": "^5.0.0"
+    "ts-node": "^10.9.0"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
     "@slack/bolt": "^3.0.0",
     "axios": "^1.6.0",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "prisma": "^5.0.0",
+    "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
