@@ -117,6 +117,11 @@ export class AIEmployeeService {
   private normalizeMention(mention: string): string {
     const trimmed = mention.trim();
 
+    // Slack形式のメンション（<@Uxxxxx>）はそのまま返す
+    if (trimmed.startsWith('<@') && trimmed.endsWith('>')) {
+      return trimmed;
+    }
+
     // 既に@で始まっている場合はそのまま返す
     if (trimmed.startsWith('@')) {
       return trimmed;

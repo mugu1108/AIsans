@@ -1,6 +1,5 @@
-import { DifyClient } from '../infrastructure/dify/DifyClient';
-import { CSVGenerator } from '../infrastructure/csv/CSVGenerator';
-import { CompanyData } from '../infrastructure/dify/DifyTypes';
+import { GASClient } from '../infrastructure/gas/GASClient';
+import { parseQuery } from '../infrastructure/gas/queryParser';
 import { AIShineError } from '../utils/errors';
 import { Logger, ConsoleLogger } from '../utils/logger';
 
@@ -37,14 +36,13 @@ export interface WorkflowExecutionResult {
 /**
  * ワークフローオーケストレーター
  *
- * Difyワークフロー実行とCSV生成を調整
+ * GAS Webアプリとの連携を調整
  */
 export class WorkflowOrchestrator {
   private logger: Logger;
 
   constructor(
-    private difyClient: DifyClient,
-    private csvGenerator: CSVGenerator,
+    private gasClient: GASClient,
     logger?: Logger
   ) {
     this.logger = logger || new ConsoleLogger();
@@ -53,41 +51,37 @@ export class WorkflowOrchestrator {
   /**
    * ワークフローを実行
    *
-   * @param endpoint - Dify APIエンドポイント
-   * @param keyword - 検索キーワード
+   * @param query - 検索クエリ（自然言語）
    * @param maxRetries - 最大リトライ回数（デフォルト: 3）
    * @returns 実行結果
    */
   async executeWorkflow(
-    endpoint: string,
-    keyword: string,
+    query: string,
     maxRetries: number = 3
   ): Promise<WorkflowExecutionResult> {
     const startTime = Date.now();
 
     this.logger.info('ワークフロー実行を開始', {
-      endpoint,
-      keyword,
+      query,
       maxRetries,
     });
 
     try {
-      // リトライ付きでDifyワークフロー実行
-      this.logger.debug('Difyワークフローを呼び出し中');
-      const response = await this.retryWithBackoff(
-        () => this.difyClient.callWorkflow(endpoint, {
-          inputs: { keyword },
-          response_mode: 'blocking',
-        }),
+      // クエリを地域と業種に分解
+      const params = parseQuery(query);
+      this.logger.debug('クエリをパース', { query, params });
+
+      // リトライ付きでGAS Webアプリ実行
+      this.logger.debug('GAS Webアプリを呼び出し中');
+      const csvBuffer = await this.retryWithBackoff(
+        () => this.gasClient.fetchCSV(params.region, params.industry, 30),
         maxRetries
       );
 
-      // 企業データを取得
-      const companies: CompanyData[] = response.data.outputs.companies || [];
-      this.logger.debug(`企業データを取得: ${companies.length}件`);
+      this.logger.debug(`CSVデータを取得: ${csvBuffer.length}バイト`);
 
-      if (companies.length === 0) {
-        this.logger.warn('検索結果が0件でした', { keyword });
+      if (csvBuffer.length === 0) {
+        this.logger.warn('CSVデータが空でした', { query });
         return {
           success: false,
           errorMessage: '検索結果が0件でした',
@@ -95,14 +89,15 @@ export class WorkflowOrchestrator {
         };
       }
 
-      // CSVに変換
-      this.logger.debug('CSV生成中');
-      const csvBuffer = this.csvGenerator.generate(companies);
+      // CSVの行数をカウント（ヘッダー除く）
+      const csvText = csvBuffer.toString('utf-8');
+      const lines = csvText.trim().split('\n');
+      const resultCount = Math.max(0, lines.length - 1); // ヘッダー行を除く
 
       const result = {
         success: true,
         csvBuffer,
-        resultCount: companies.length,
+        resultCount,
         processingTimeSeconds: this.calculateProcessingTime(startTime),
       };
 
@@ -117,8 +112,7 @@ export class WorkflowOrchestrator {
       const errorMessage = err.message;
 
       this.logger.error('ワークフロー実行エラー', err, {
-        keyword,
-        endpoint,
+        query,
       });
 
       return {

@@ -28,6 +28,11 @@ export interface MessageEvent {
   mention?: string;
 
   /**
+   * メッセージのタイムスタンプ
+   */
+  ts: string;
+
+  /**
    * スレッドタイムスタンプ（スレッド内メッセージの場合）
    */
   threadTs?: string;
@@ -46,8 +51,9 @@ export interface PlatformAdapter {
    * @param channelId - 送信先チャンネルID
    * @param text - メッセージ本文
    * @param threadTs - スレッドタイムスタンプ（任意）
+   * @returns 送信したメッセージのタイムスタンプ
    */
-  sendMessage(channelId: string, text: string, threadTs?: string): Promise<void>;
+  sendMessage(channelId: string, text: string, threadTs?: string): Promise<string>;
 
   /**
    * ファイルを送信

@@ -4,13 +4,14 @@
  * 全レイヤーの統合とアプリケーション起動を担当
  */
 
+import 'dotenv/config';
 import { SlackAdapter } from './interfaces/slack/SlackAdapter';
 import { AIEmployeeService } from './domain/services/AIEmployeeService';
 import { LogService } from './domain/services/LogService';
 import { AIEmployeeRepository } from './infrastructure/database/repositories/AIEmployeeRepository';
 import { LogRepository } from './infrastructure/database/repositories/LogRepository';
-import { DifyClient } from './infrastructure/dify/DifyClient';
-import { CSVGenerator } from './infrastructure/csv/CSVGenerator';
+import { GASClient } from './infrastructure/gas/GASClient';
+import { GoogleSheetsClient } from './infrastructure/google/GoogleSheetsClient';
 import { WorkflowOrchestrator } from './application/WorkflowOrchestrator';
 import { getEnvConfig, logEnvironmentSummary } from './config/env';
 import { disconnectPrisma } from './infrastructure/database/prisma';
@@ -21,10 +22,12 @@ import { AIEmployeeNotFoundError } from './utils/errors';
  * アプリケーション起動
  */
 async function main(): Promise<void> {
+  console.log('🚀 AI-Shine starting...');
   const logger = new ConsoleLogger();
 
   try {
     // 環境変数の検証と読み込み
+    console.log('Loading environment variables...');
     logger.info('環境変数を読み込んでいます...');
     const env = getEnvConfig();
     logEnvironmentSummary();
@@ -41,12 +44,24 @@ async function main(): Promise<void> {
 
     // Infrastructure層の初期化
     logger.info('Infrastructure層を初期化しています...');
-    const difyClient = new DifyClient(env.DIFY_API_KEY);
-    const csvGenerator = new CSVGenerator();
+    const gasClient = new GASClient(env.GAS_API_URL, logger);
+
+    // Google Sheets機能（環境変数が設定されている場合のみ）
+    let googleSheetsClient: GoogleSheetsClient | null = null;
+    if (env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH && env.GOOGLE_DRIVE_FOLDER_ID) {
+      googleSheetsClient = new GoogleSheetsClient(
+        env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+        env.GOOGLE_DRIVE_FOLDER_ID,
+        logger
+      );
+      logger.info('Google Sheets機能を有効化しました');
+    } else {
+      logger.info('Google Sheets機能は無効です（環境変数未設定）');
+    }
 
     // Application層の初期化
     logger.info('Application層を初期化しています...');
-    const orchestrator = new WorkflowOrchestrator(difyClient, csvGenerator, logger);
+    const orchestrator = new WorkflowOrchestrator(gasClient, logger);
 
     // Interface層の初期化
     logger.info('Slackアダプターを初期化しています...');
@@ -75,26 +90,31 @@ async function main(): Promise<void> {
 
         if (!employee) {
           logger.warn('AI社員が見つかりませんでした', { mention: event.mention });
+          // エラー時は元のメッセージにスレッドで返信
+          const errorThreadTs = event.threadTs || event.ts;
           await slackAdapter.sendMessage(
             event.channelId,
             `申し訳ございません。"${event.mention}" に対応するAI社員が見つかりませんでした。`,
-            event.threadTs
+            errorThreadTs
           );
           throw new AIEmployeeNotFoundError(event.mention!);
         }
 
-        // 処理開始通知
-        await slackAdapter.sendMessage(
+        // 処理開始通知を送信し、そのメッセージのtsを取得（これがスレッドのルートになる）
+        const startMessageTs = await slackAdapter.sendMessage(
           event.channelId,
-          '了解しました！営業リスト作成を開始します...⏳',
-          event.threadTs
+          '了解しました！営業リスト作成を開始します...⏳'
         );
 
+        // 以降のメッセージはこのスレッド内に投稿
+        const threadTs = startMessageTs;
+
+        // メンション部分を削除してクエリを抽出
+        const query = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
+        logger.debug('クエリを抽出', { originalText: event.text, query });
+
         // ワークフロー実行
-        const result = await orchestrator.executeWorkflow(
-          employee.difyApiEndpoint,
-          event.text
-        );
+        const result = await orchestrator.executeWorkflow(query);
 
         // 結果処理
         if (result.success) {
@@ -107,12 +127,42 @@ async function main(): Promise<void> {
           const timestamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15);
           const filename = `sales_list_${timestamp}.csv`;
 
+          // 完了メッセージを先に投稿（順番を保証するため）
+          await slackAdapter.sendMessage(
+            event.channelId,
+            `✅ 完了しました！${result.resultCount}社のリストを作成しました（処理時間: ${result.processingTimeSeconds}秒）`,
+            threadTs
+          );
+
+          // その後にCSVファイルを送信
           await slackAdapter.sendFile(
             event.channelId,
             result.csvBuffer!,
             filename,
-            `✅ 完了しました！${result.resultCount}社のリストを作成しました（処理時間: ${result.processingTimeSeconds}秒）`
+            undefined, // コメントなし
+            threadTs
           );
+
+          // Googleスプレッドシート作成（有効な場合のみ）
+          if (googleSheetsClient) {
+            try {
+              const spreadsheetTitle = `営業リスト_${timestamp}`;
+              const spreadsheetResult = await googleSheetsClient.createSpreadsheetFromCSV(
+                result.csvBuffer!,
+                spreadsheetTitle
+              );
+
+              // スプレッドシートURLをスレッドで通知
+              await slackAdapter.sendMessage(
+                event.channelId,
+                `📊 Googleスプレッドシートも作成しました！\n${spreadsheetResult.spreadsheetUrl}`,
+                threadTs
+              );
+            } catch (sheetsError) {
+              logger.error('Googleスプレッドシート作成エラー', sheetsError as Error);
+              // エラーは無視してCSVのみで完了
+            }
+          }
 
           // 成功ログの記録
           await logService.recordExecution({
@@ -133,7 +183,7 @@ async function main(): Promise<void> {
           await slackAdapter.sendErrorWithRetry(
             event.channelId,
             result.errorMessage!,
-            event.threadTs
+            threadTs
           );
 
           // エラーログの記録
@@ -168,10 +218,12 @@ async function main(): Promise<void> {
 
         // AIEmployeeNotFoundError以外のエラーの場合はユーザーに通知
         if (!(error instanceof AIEmployeeNotFoundError)) {
+          // エラー時は元のメッセージにスレッドで返信
+          const errorThreadTs = event.threadTs || event.ts;
           await slackAdapter.sendMessage(
             event.channelId,
             '申し訳ございません。処理中にエラーが発生しました。しばらく経ってから再度お試しください。',
-            event.threadTs
+            errorThreadTs
           );
         }
       }

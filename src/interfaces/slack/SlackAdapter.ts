@@ -42,15 +42,17 @@ export class SlackAdapter implements PlatformAdapter {
    * @param channelId - 送信先チャンネルID
    * @param text - メッセージ本文
    * @param threadTs - スレッドタイムスタンプ（任意）
+   * @returns 送信したメッセージのタイムスタンプ
    */
-  async sendMessage(channelId: string, text: string, threadTs?: string): Promise<void> {
+  async sendMessage(channelId: string, text: string, threadTs?: string): Promise<string> {
     this.logger.debug('メッセージを送信中', { channelId, threadTs });
-    await this.app.client.chat.postMessage({
+    const result = await this.app.client.chat.postMessage({
       channel: channelId,
       text,
       thread_ts: threadTs,
     });
-    this.logger.debug('メッセージを送信完了', { channelId });
+    this.logger.debug('メッセージを送信完了', { channelId, ts: result.ts });
+    return result.ts!;
   }
 
   /**
@@ -60,20 +62,37 @@ export class SlackAdapter implements PlatformAdapter {
    * @param file - ファイルのバッファ
    * @param filename - ファイル名
    * @param comment - コメント（任意）
+   * @param threadTs - スレッドタイムスタンプ（任意）
    */
   async sendFile(
     channelId: string,
     file: Buffer,
     filename: string,
-    comment?: string
+    comment?: string,
+    threadTs?: string
   ): Promise<void> {
-    this.logger.debug('ファイルを送信中', { channelId, filename });
-    await this.app.client.files.uploadV2({
+    this.logger.debug('ファイルを送信中', { channelId, filename, threadTs });
+
+    // アップロードパラメータ
+    const uploadParams: {
+      channel_id: string;
+      file: Buffer;
+      filename: string;
+      thread_ts?: string;
+      initial_comment?: string;
+    } = {
       channel_id: channelId,
       file: file,
       filename: filename,
-      initial_comment: comment,
-    });
+      thread_ts: threadTs,
+    };
+
+    // commentがある場合のみinitial_commentを追加
+    if (comment) {
+      uploadParams.initial_comment = comment;
+    }
+
+    await this.app.client.files.uploadV2(uploadParams);
     this.logger.info('ファイルを送信完了', { channelId, filename });
   }
 
@@ -128,8 +147,12 @@ export class SlackAdapter implements PlatformAdapter {
    * @param handler - イベントハンドラ関数
    */
   onMention(handler: (event: MessageEvent) => Promise<void>): void {
+    console.log('📝 onMention ハンドラーを登録しました');
     this.app.event('app_mention', async ({ event, client }) => {
       try {
+        console.log('🔔 app_mention イベントを受信しました!');
+        console.log('  channelId:', event.channel);
+        console.log('  text:', event.text);
         this.logger.debug('メンションイベントを受信', {
           userId: event.user,
           channelId: event.channel,
@@ -151,6 +174,7 @@ export class SlackAdapter implements PlatformAdapter {
           channelId: event.channel!,
           text: event.text || '',
           mention: mention,
+          ts: event.ts!,
           threadTs: event.thread_ts,
         };
 

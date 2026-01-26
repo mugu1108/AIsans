@@ -20,7 +20,7 @@ AI-ShineはSlack、LINE、Microsoft Teamsなど複数のプラットフォーム
 
 ```
 ai-shain/
-├── .claude/              # Claude Code設定
+├── .claude/
 │   ├── commands/         # カスタムコマンド
 │   ├── rules/           # ルールファイル
 │   └── settings.json    # フック設定
@@ -45,10 +45,6 @@ ai-shain/
 # 依存関係インストール
 npm install
 
-# 環境変数設定
-cp .env.example .env
-# .envを編集して実際の値を設定
-
 # Prismaセットアップ
 npx prisma migrate dev
 npx prisma generate
@@ -63,13 +59,6 @@ npm run dev
 - [アーキテクチャ設計書](./docs/ARCHITECTURE.md)
 - [実装計画書](./docs/IMPLEMENTATION_PLAN.md)
 - [開発ガイドライン](./CLAUDE.md)
-
-```bash
-# Git worktreeを使った並列開発
-git worktree add ../ai-shain-database feature/database-schema
-```
-
-詳細は[IMPLEMENTATION_PLAN.md](./docs/IMPLEMENTATION_PLAN.md)を参照してください。
 
 ## ライセンス
 
