@@ -60,6 +60,8 @@ npm run dev
 - [実装計画書](./docs/IMPLEMENTATION_PLAN.md)
 - [開発ガイドライン](./CLAUDE.md)
 
+詳細は[IMPLEMENTATION_PLAN.md](./docs/IMPLEMENTATION_PLAN.md)を参照してください。
+
 ## ライセンス
 
 MIT
