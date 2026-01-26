@@ -28,6 +28,10 @@ export interface EnvironmentVariables {
   // GAS Web API
   GAS_API_URL: string;
 
+  // Google API（任意）
+  GOOGLE_SERVICE_ACCOUNT_KEY_PATH?: string;
+  GOOGLE_DRIVE_FOLDER_ID?: string;
+
   // サーバー
   PORT: number;
 }
@@ -148,6 +152,8 @@ function loadEnvironmentVariables(): EnvironmentVariables {
     SLACK_SIGNING_SECRET: requireEnv('SLACK_SIGNING_SECRET'),
     SLACK_APP_TOKEN: getEnv('SLACK_APP_TOKEN'),
     GAS_API_URL: requireEnv('GAS_API_URL'),
+    GOOGLE_SERVICE_ACCOUNT_KEY_PATH: getEnv('GOOGLE_SERVICE_ACCOUNT_KEY_PATH'),
+    GOOGLE_DRIVE_FOLDER_ID: getEnv('GOOGLE_DRIVE_FOLDER_ID'),
     PORT: getPort(),
   };
 
@@ -183,14 +189,16 @@ export function logEnvironmentSummary(): void {
   console.log('========================================');
   console.log('環境変数設定');
   console.log('========================================');
-  console.log(`NODE_ENV:             ${env.NODE_ENV}`);
-  console.log(`PORT:                 ${env.PORT}`);
-  console.log(`DATABASE_URL:         ${maskConnectionString(env.DATABASE_URL)}`);
-  console.log(`DIRECT_URL:           ${maskConnectionString(env.DIRECT_URL)}`);
-  console.log(`SLACK_BOT_TOKEN:      ${maskToken(env.SLACK_BOT_TOKEN)}`);
-  console.log(`SLACK_SIGNING_SECRET: ${maskToken(env.SLACK_SIGNING_SECRET)}`);
-  console.log(`SLACK_APP_TOKEN:      ${env.SLACK_APP_TOKEN ? maskToken(env.SLACK_APP_TOKEN) : '(未設定)'}`);
-  console.log(`GAS_API_URL:          ${maskUrl(env.GAS_API_URL)}`);
+  console.log(`NODE_ENV:                           ${env.NODE_ENV}`);
+  console.log(`PORT:                               ${env.PORT}`);
+  console.log(`DATABASE_URL:                       ${maskConnectionString(env.DATABASE_URL)}`);
+  console.log(`DIRECT_URL:                         ${maskConnectionString(env.DIRECT_URL)}`);
+  console.log(`SLACK_BOT_TOKEN:                    ${maskToken(env.SLACK_BOT_TOKEN)}`);
+  console.log(`SLACK_SIGNING_SECRET:               ${maskToken(env.SLACK_SIGNING_SECRET)}`);
+  console.log(`SLACK_APP_TOKEN:                    ${env.SLACK_APP_TOKEN ? maskToken(env.SLACK_APP_TOKEN) : '(未設定)'}`);
+  console.log(`GAS_API_URL:                        ${maskUrl(env.GAS_API_URL)}`);
+  console.log(`GOOGLE_SERVICE_ACCOUNT_KEY_PATH:    ${env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || '(未設定)'}`);
+  console.log(`GOOGLE_DRIVE_FOLDER_ID:             ${env.GOOGLE_DRIVE_FOLDER_ID || '(未設定)'}`);
   console.log('========================================');
 }
 
