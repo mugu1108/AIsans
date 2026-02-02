@@ -31,6 +31,11 @@ export interface WorkflowExecutionResult {
    * エラーメッセージ（失敗時）
    */
   errorMessage?: string;
+
+  /**
+   * スプレッドシートURL（成功時、スプレッドシート作成時のみ）
+   */
+  spreadsheetUrl?: string;
 }
 
 /**
@@ -53,17 +58,20 @@ export class WorkflowOrchestrator {
    *
    * @param query - 検索クエリ（自然言語）
    * @param maxRetries - 最大リトライ回数（デフォルト: 3）
+   * @param folderId - スプレッドシート保存先フォルダID（オプション）
    * @returns 実行結果
    */
   async executeWorkflow(
     query: string,
-    maxRetries: number = 3
+    maxRetries: number = 3,
+    folderId?: string
   ): Promise<WorkflowExecutionResult> {
     const startTime = Date.now();
 
     this.logger.info('ワークフロー実行を開始', {
       query,
       maxRetries,
+      folderId,
     });
 
     try {
@@ -71,8 +79,44 @@ export class WorkflowOrchestrator {
       const params = parseQuery(query);
       this.logger.debug('クエリをパース', { query, params });
 
-      // リトライ付きでGAS Webアプリ実行
-      this.logger.debug('GAS Webアプリを呼び出し中');
+      // folderIdが指定されている場合はCSV+スプレッドシートを同時作成
+      if (folderId) {
+        this.logger.debug('GAS Webアプリを呼び出し中（CSV+スプレッドシート）');
+        const bothResult = await this.retryWithBackoff(
+          () => this.gasClient.fetchBoth(params.region, params.industry, 30, folderId),
+          maxRetries
+        );
+
+        this.logger.debug(`CSVデータを取得: ${bothResult.csvBuffer.length}バイト`);
+
+        if (bothResult.csvBuffer.length === 0) {
+          this.logger.warn('CSVデータが空でした', { query });
+          return {
+            success: false,
+            errorMessage: '検索結果が0件でした',
+            processingTimeSeconds: this.calculateProcessingTime(startTime),
+          };
+        }
+
+        const result = {
+          success: true,
+          csvBuffer: bothResult.csvBuffer,
+          resultCount: bothResult.rowCount,
+          spreadsheetUrl: bothResult.spreadsheetUrl,
+          processingTimeSeconds: this.calculateProcessingTime(startTime),
+        };
+
+        this.logger.info('ワークフロー実行完了（CSV+スプレッドシート）', {
+          resultCount: result.resultCount,
+          spreadsheetUrl: result.spreadsheetUrl,
+          processingTimeSeconds: result.processingTimeSeconds,
+        });
+
+        return result;
+      }
+
+      // folderIdが指定されていない場合はCSVのみ
+      this.logger.debug('GAS Webアプリを呼び出し中（CSVのみ）');
       const csvBuffer = await this.retryWithBackoff(
         () => this.gasClient.fetchCSV(params.region, params.industry, 30),
         maxRetries

@@ -11,7 +11,6 @@ import { LogService } from './domain/services/LogService';
 import { AIEmployeeRepository } from './infrastructure/database/repositories/AIEmployeeRepository';
 import { LogRepository } from './infrastructure/database/repositories/LogRepository';
 import { GASClient } from './infrastructure/gas/GASClient';
-import { GoogleSheetsClient } from './infrastructure/google/GoogleSheetsClient';
 import { WorkflowOrchestrator } from './application/WorkflowOrchestrator';
 import { getEnvConfig, logEnvironmentSummary } from './config/env';
 import { disconnectPrisma } from './infrastructure/database/prisma';
@@ -46,17 +45,12 @@ async function main(): Promise<void> {
     logger.info('Infrastructure層を初期化しています...');
     const gasClient = new GASClient(env.GAS_API_URL, logger);
 
-    // Google Sheets機能（環境変数が設定されている場合のみ）
-    let googleSheetsClient: GoogleSheetsClient | null = null;
-    if (env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH && env.GOOGLE_DRIVE_FOLDER_ID) {
-      googleSheetsClient = new GoogleSheetsClient(
-        env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-        env.GOOGLE_DRIVE_FOLDER_ID,
-        logger
-      );
-      logger.info('Google Sheets機能を有効化しました');
+    // スプレッドシート機能のフォルダID（環境変数から取得）
+    const spreadsheetFolderId = env.GOOGLE_DRIVE_FOLDER_ID;
+    if (spreadsheetFolderId) {
+      logger.info('スプレッドシート機能を有効化しました（GAS経由）', { folderId: spreadsheetFolderId });
     } else {
-      logger.info('Google Sheets機能は無効です（環境変数未設定）');
+      logger.info('スプレッドシート機能は無効です（GOOGLE_DRIVE_FOLDER_ID未設定）');
     }
 
     // Application層の初期化
@@ -113,8 +107,8 @@ async function main(): Promise<void> {
         const query = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
         logger.debug('クエリを抽出', { originalText: event.text, query });
 
-        // ワークフロー実行
-        const result = await orchestrator.executeWorkflow(query);
+        // ワークフロー実行（folderIdが指定されている場合はスプレッドシートも同時作成）
+        const result = await orchestrator.executeWorkflow(query, 3, spreadsheetFolderId);
 
         // 結果処理
         if (result.success) {
@@ -127,10 +121,14 @@ async function main(): Promise<void> {
           const timestamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15);
           const filename = `sales_list_${timestamp}.csv`;
 
-          // 完了メッセージを先に投稿（順番を保証するため）
+          // 完了メッセージを投稿（スプレッドシートURLがある場合は一緒に表示）
+          let completeMessage = `✅ 完了しました！${result.resultCount}社のリストを作成しました（処理時間: ${result.processingTimeSeconds}秒）`;
+          if (result.spreadsheetUrl) {
+            completeMessage += `\n\n📊 Googleスプレッドシートも作成しました！\n${result.spreadsheetUrl}`;
+          }
           await slackAdapter.sendMessage(
             event.channelId,
-            `✅ 完了しました！${result.resultCount}社のリストを作成しました（処理時間: ${result.processingTimeSeconds}秒）`,
+            completeMessage,
             threadTs
           );
 
@@ -142,27 +140,6 @@ async function main(): Promise<void> {
             undefined, // コメントなし
             threadTs
           );
-
-          // Googleスプレッドシート作成（有効な場合のみ）
-          if (googleSheetsClient) {
-            try {
-              const spreadsheetTitle = `営業リスト_${timestamp}`;
-              const spreadsheetResult = await googleSheetsClient.createSpreadsheetFromCSV(
-                result.csvBuffer!,
-                spreadsheetTitle
-              );
-
-              // スプレッドシートURLをスレッドで通知
-              await slackAdapter.sendMessage(
-                event.channelId,
-                `📊 Googleスプレッドシートも作成しました！\n${spreadsheetResult.spreadsheetUrl}`,
-                threadTs
-              );
-            } catch (sheetsError) {
-              logger.error('Googleスプレッドシート作成エラー', sheetsError as Error);
-              // エラーは無視してCSVのみで完了
-            }
-          }
 
           // 成功ログの記録
           await logService.recordExecution({

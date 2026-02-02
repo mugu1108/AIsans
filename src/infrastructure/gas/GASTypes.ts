@@ -16,6 +16,16 @@ export interface GASRequest {
    * 取得件数（デフォルト: 30）
    */
   count?: number;
+
+  /**
+   * 出力形式（csv, spreadsheet, both）
+   */
+  outputFormat?: 'csv' | 'spreadsheet' | 'both';
+
+  /**
+   * スプレッドシート保存先フォルダID
+   */
+  folderId?: string;
 }
 
 /**
@@ -24,6 +34,33 @@ export interface GASRequest {
 export interface GASErrorResponse {
   status?: string;
   error?: string;
+  message?: string;
+}
+
+/**
+ * スプレッドシート作成結果
+ */
+export interface GASSpreadsheetResponse {
+  status: 'success' | 'error';
+  spreadsheetId?: string;
+  spreadsheetUrl?: string;
+  title?: string;
+  rowCount?: number;
+  processingTime?: number;
+  message?: string;
+}
+
+/**
+ * CSV + スプレッドシート両方の結果
+ */
+export interface GASBothResponse {
+  status: 'success' | 'error';
+  csvBase64?: string;
+  spreadsheetId?: string;
+  spreadsheetUrl?: string;
+  title?: string;
+  rowCount?: number;
+  processingTime?: number;
   message?: string;
 }
 
