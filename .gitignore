@@ -48,3 +48,13 @@ prisma/*.db-journal
 # Temporary files
 *.tmp
 .cache/
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
