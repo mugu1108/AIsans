@@ -9,6 +9,9 @@ pnpm-lock.yaml
 .env.local
 .env.*.local
 
+# Google API credentials
+google-service-account.json
+
 # MCP configuration
 .mcp.json
 
@@ -45,3 +48,13 @@ prisma/*.db-journal
 # Temporary files
 *.tmp
 .cache/
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/

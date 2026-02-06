@@ -1,5 +1,4 @@
-import { GASClient } from '../infrastructure/gas/GASClient';
-import { parseQuery } from '../infrastructure/gas/queryParser';
+import { DifyClient } from '../infrastructure/dify/DifyClient';
 import { AIShineError } from '../utils/errors';
 import { Logger, ConsoleLogger } from '../utils/logger';
 
@@ -31,18 +30,23 @@ export interface WorkflowExecutionResult {
    * エラーメッセージ（失敗時）
    */
   errorMessage?: string;
+
+  /**
+   * スプレッドシートURL（成功時、スプレッドシート作成時のみ）
+   */
+  spreadsheetUrl?: string;
 }
 
 /**
  * ワークフローオーケストレーター
  *
- * GAS Webアプリとの連携を調整
+ * Dify Workflowとの連携を調整
  */
 export class WorkflowOrchestrator {
   private logger: Logger;
 
   constructor(
-    private gasClient: GASClient,
+    private difyClient: DifyClient,
     logger?: Logger
   ) {
     this.logger = logger || new ConsoleLogger();
@@ -51,13 +55,15 @@ export class WorkflowOrchestrator {
   /**
    * ワークフローを実行
    *
-   * @param query - 検索クエリ（自然言語）
+   * @param query - 検索クエリ（自然言語、例: "東京のIT企業"）
    * @param maxRetries - 最大リトライ回数（デフォルト: 3）
+   * @param _folderId - スプレッドシート保存先フォルダID（現在未使用、Dify側で処理）
    * @returns 実行結果
    */
   async executeWorkflow(
     query: string,
-    maxRetries: number = 3
+    maxRetries: number = 3,
+    _folderId?: string
   ): Promise<WorkflowExecutionResult> {
     const startTime = Date.now();
 
@@ -67,20 +73,16 @@ export class WorkflowOrchestrator {
     });
 
     try {
-      // クエリを地域と業種に分解
-      const params = parseQuery(query);
-      this.logger.debug('クエリをパース', { query, params });
-
-      // リトライ付きでGAS Webアプリ実行
-      this.logger.debug('GAS Webアプリを呼び出し中');
-      const csvBuffer = await this.retryWithBackoff(
-        () => this.gasClient.fetchCSV(params.region, params.industry, 30),
+      // Dify Workflowを呼び出し
+      this.logger.debug('Dify Workflowを呼び出し中');
+      const result = await this.retryWithBackoff(
+        () => this.difyClient.executeWorkflow(query, 30),
         maxRetries
       );
 
-      this.logger.debug(`CSVデータを取得: ${csvBuffer.length}バイト`);
+      this.logger.debug(`CSVデータを取得: ${result.csvBuffer.length}バイト`);
 
-      if (csvBuffer.length === 0) {
+      if (result.csvBuffer.length === 0 || result.rowCount === 0) {
         this.logger.warn('CSVデータが空でした', { query });
         return {
           success: false,
@@ -89,24 +91,19 @@ export class WorkflowOrchestrator {
         };
       }
 
-      // CSVの行数をカウント（ヘッダー除く）
-      const csvText = csvBuffer.toString('utf-8');
-      const lines = csvText.trim().split('\n');
-      const resultCount = Math.max(0, lines.length - 1); // ヘッダー行を除く
-
-      const result = {
+      const workflowResult: WorkflowExecutionResult = {
         success: true,
-        csvBuffer,
-        resultCount,
+        csvBuffer: result.csvBuffer,
+        resultCount: result.rowCount,
         processingTimeSeconds: this.calculateProcessingTime(startTime),
       };
 
       this.logger.info('ワークフロー実行完了', {
-        resultCount: result.resultCount,
-        processingTimeSeconds: result.processingTimeSeconds,
+        resultCount: workflowResult.resultCount,
+        processingTimeSeconds: workflowResult.processingTimeSeconds,
       });
 
-      return result;
+      return workflowResult;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       const errorMessage = err.message;

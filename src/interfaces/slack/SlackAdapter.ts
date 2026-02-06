@@ -10,6 +10,7 @@ import { Logger, ConsoleLogger } from '../../utils/logger';
 export class SlackAdapter implements PlatformAdapter {
   private app: App;
   private logger: Logger;
+  private processedEvents: Set<string> = new Set(); // イベント重複防止用
 
   constructor(
     botToken: string,
@@ -150,6 +151,19 @@ export class SlackAdapter implements PlatformAdapter {
     console.log('📝 onMention ハンドラーを登録しました');
     this.app.event('app_mention', async ({ event, client }) => {
       try {
+        // イベント重複チェック
+        const eventId = `${event.channel}-${event.ts}`;
+        if (this.processedEvents.has(eventId)) {
+          console.log('⚠️ 重複イベントをスキップ:', eventId);
+          return;
+        }
+        this.processedEvents.add(eventId);
+        // 古いイベントIDを定期的にクリア（メモリリーク防止）
+        if (this.processedEvents.size > 1000) {
+          const entries = Array.from(this.processedEvents);
+          entries.slice(0, 500).forEach(id => this.processedEvents.delete(id));
+        }
+
         console.log('🔔 app_mention イベントを受信しました!');
         console.log('  channelId:', event.channel);
         console.log('  text:', event.text);

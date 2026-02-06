@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { GASRequest, GASErrorResponse } from './GASTypes';
+import { GASRequest, GASErrorResponse, GASSpreadsheetResponse, GASBothResponse } from './GASTypes';
 import { NetworkError, TimeoutError } from '../../utils/errors';
 import { Logger, ConsoleLogger } from '../../utils/logger';
 
@@ -51,6 +51,130 @@ export class GASClient {
     } catch (error) {
       this.handleError(error, region, industry);
       throw error; // TypeScriptの型チェックのため
+    }
+  }
+
+  /**
+   * GAS Webアプリを呼び出してCSVとスプレッドシートを同時に作成
+   *
+   * @param region - 検索地域
+   * @param industry - 検索業種
+   * @param count - 取得件数（デフォルト: 30）
+   * @param folderId - 保存先フォルダID（オプション）
+   * @returns CSV（Buffer）とスプレッドシート情報
+   * @throws NetworkError, TimeoutError
+   */
+  async fetchBoth(
+    region: string,
+    industry: string,
+    count: number = 30,
+    folderId?: string
+  ): Promise<{ csvBuffer: Buffer; spreadsheetUrl?: string; rowCount: number }> {
+    this.logger.debug('GAS Webアプリで CSV+スプレッドシート作成を呼び出し中', {
+      region,
+      industry,
+      count,
+      folderId,
+    });
+
+    try {
+      const jsonClient = axios.create({
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 300000, // 5分
+      });
+
+      const requestData: GASRequest = {
+        region,
+        industry,
+        count,
+        outputFormat: 'both',
+        folderId,
+      };
+
+      const response = await jsonClient.post<GASBothResponse>(
+        this.apiUrl,
+        requestData
+      );
+
+      if (response.data.status !== 'success' || !response.data.csvBase64) {
+        throw new NetworkError(response.data.message || 'GAS APIエラー');
+      }
+
+      // Base64デコードしてBufferに変換
+      const csvBuffer = Buffer.from(response.data.csvBase64, 'base64');
+
+      this.logger.info('GAS Webアプリ CSV+スプレッドシート作成完了', {
+        spreadsheetUrl: response.data.spreadsheetUrl,
+        rowCount: response.data.rowCount,
+      });
+
+      return {
+        csvBuffer,
+        spreadsheetUrl: response.data.spreadsheetUrl,
+        rowCount: response.data.rowCount || 0,
+      };
+    } catch (error) {
+      this.handleError(error, region, industry);
+      throw error;
+    }
+  }
+
+  /**
+   * GAS Webアプリを呼び出してスプレッドシートを作成
+   *
+   * @param region - 検索地域
+   * @param industry - 検索業種
+   * @param count - 取得件数（デフォルト: 30）
+   * @param folderId - 保存先フォルダID（オプション）
+   * @returns スプレッドシート作成結果
+   * @throws NetworkError, TimeoutError
+   */
+  async createSpreadsheet(
+    region: string,
+    industry: string,
+    count: number = 30,
+    folderId?: string
+  ): Promise<GASSpreadsheetResponse> {
+    this.logger.debug('GAS Webアプリでスプレッドシート作成を呼び出し中', {
+      region,
+      industry,
+      count,
+      folderId,
+    });
+
+    try {
+      // JSON応答を受け取るための一時的なクライアント
+      const jsonClient = axios.create({
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 300000, // 5分
+      });
+
+      const requestData: GASRequest = {
+        region,
+        industry,
+        count,
+        outputFormat: 'spreadsheet',
+        folderId,
+      };
+
+      const response = await jsonClient.post<GASSpreadsheetResponse>(
+        this.apiUrl,
+        requestData
+      );
+
+      this.logger.info('GAS Webアプリ スプレッドシート作成完了', {
+        spreadsheetId: response.data.spreadsheetId,
+        rowCount: response.data.rowCount,
+      });
+
+      return response.data;
+    } catch (error) {
+      this.handleError(error, region, industry);
+      throw error;
     }
   }
 

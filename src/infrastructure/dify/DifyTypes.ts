@@ -7,21 +7,24 @@ export interface DifyWorkflowRequest {
    */
   inputs: {
     /**
-     * 検索キーワード
+     * 検索キーワード（例: "東京のIT企業"）
      */
-    keyword: string;
-    [key: string]: unknown;
+    user_input: string;
+    /**
+     * 目標件数（任意、デフォルト: 30）
+     */
+    target_count?: number;
   };
 
   /**
-   * レスポンスモード（デフォルト: blocking）
+   * レスポンスモード
    */
-  response_mode?: 'blocking' | 'streaming';
+  response_mode: 'blocking' | 'streaming';
 
   /**
    * ユーザー識別子
    */
-  user?: string;
+  user: string;
 }
 
 /**
@@ -60,12 +63,11 @@ export interface DifyWorkflowResponse {
     /**
      * 出力結果
      */
-    outputs: {
+    outputs?: {
       /**
-       * 企業データ配列
+       * CSVデータ（文字列）
        */
-      companies?: CompanyData[];
-      [key: string]: unknown;
+      summary?: string;
     };
 
     /**
@@ -91,7 +93,7 @@ export interface DifyWorkflowResponse {
 }
 
 /**
- * 企業データ
+ * 企業データ（CSV生成用）
  */
 export interface CompanyData {
   /**
