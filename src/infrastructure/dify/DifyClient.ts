@@ -37,7 +37,7 @@ export class DifyClient {
     query: string,
     targetCount: number = 30,
     userId: string = 'slack-user'
-  ): Promise<{ csvBuffer: Buffer; rowCount: number }> {
+  ): Promise<{ csvBuffer: Buffer; rowCount: number; spreadsheetUrl?: string }> {
     this.logger.debug('Dify Workflowを呼び出し中', { query, targetCount, userId });
 
     try {
@@ -77,6 +77,9 @@ export class DifyClient {
         throw new DifyAPIError('Dify WorkflowからCSVが返されませんでした', 500);
       }
 
+      // スプレッドシートURLを取得（オプション）
+      const spreadsheetUrl = data.outputs?.spreadsheet_url;
+
       // CSVの行数をカウント（ヘッダー除く）
       const lines = csvText.trim().split('\n');
       const rowCount = Math.max(0, lines.length - 1);
@@ -88,11 +91,13 @@ export class DifyClient {
         workflowRunId: data.id,
         rowCount,
         elapsedTime: data.elapsed_time,
+        spreadsheetUrl: spreadsheetUrl || '(なし)',
       });
 
       return {
         csvBuffer,
         rowCount,
+        spreadsheetUrl,
       };
     } catch (error) {
       this.handleError(error, query);

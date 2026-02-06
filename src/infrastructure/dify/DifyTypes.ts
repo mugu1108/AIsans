@@ -68,6 +68,10 @@ export interface DifyWorkflowResponse {
        * CSVデータ（文字列）
        */
       summary?: string;
+      /**
+       * スプレッドシートURL（GASから返却）
+       */
+      spreadsheet_url?: string;
     };
 
     /**

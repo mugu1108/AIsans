@@ -96,6 +96,7 @@ export class WorkflowOrchestrator {
         csvBuffer: result.csvBuffer,
         resultCount: result.rowCount,
         processingTimeSeconds: this.calculateProcessingTime(startTime),
+        spreadsheetUrl: result.spreadsheetUrl,
       };
 
       this.logger.info('ワークフロー実行完了', {
