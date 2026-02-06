@@ -1,5 +1,4 @@
-import { GASClient } from '../infrastructure/gas/GASClient';
-import { parseQuery } from '../infrastructure/gas/queryParser';
+import { DifyClient } from '../infrastructure/dify/DifyClient';
 import { AIShineError } from '../utils/errors';
 import { Logger, ConsoleLogger } from '../utils/logger';
 
@@ -41,13 +40,13 @@ export interface WorkflowExecutionResult {
 /**
  * ワークフローオーケストレーター
  *
- * GAS Webアプリとの連携を調整
+ * Dify Workflowとの連携を調整
  */
 export class WorkflowOrchestrator {
   private logger: Logger;
 
   constructor(
-    private gasClient: GASClient,
+    private difyClient: DifyClient,
     logger?: Logger
   ) {
     this.logger = logger || new ConsoleLogger();
@@ -56,75 +55,34 @@ export class WorkflowOrchestrator {
   /**
    * ワークフローを実行
    *
-   * @param query - 検索クエリ（自然言語）
+   * @param query - 検索クエリ（自然言語、例: "東京のIT企業"）
    * @param maxRetries - 最大リトライ回数（デフォルト: 3）
-   * @param folderId - スプレッドシート保存先フォルダID（オプション）
+   * @param _folderId - スプレッドシート保存先フォルダID（現在未使用、Dify側で処理）
    * @returns 実行結果
    */
   async executeWorkflow(
     query: string,
     maxRetries: number = 3,
-    folderId?: string
+    _folderId?: string
   ): Promise<WorkflowExecutionResult> {
     const startTime = Date.now();
 
     this.logger.info('ワークフロー実行を開始', {
       query,
       maxRetries,
-      folderId,
     });
 
     try {
-      // クエリを地域と業種に分解
-      const params = parseQuery(query);
-      this.logger.debug('クエリをパース', { query, params });
-
-      // folderIdが指定されている場合はCSV+スプレッドシートを同時作成
-      if (folderId) {
-        this.logger.debug('GAS Webアプリを呼び出し中（CSV+スプレッドシート）');
-        const bothResult = await this.retryWithBackoff(
-          () => this.gasClient.fetchBoth(params.region, params.industry, 30, folderId),
-          maxRetries
-        );
-
-        this.logger.debug(`CSVデータを取得: ${bothResult.csvBuffer.length}バイト`);
-
-        if (bothResult.csvBuffer.length === 0) {
-          this.logger.warn('CSVデータが空でした', { query });
-          return {
-            success: false,
-            errorMessage: '検索結果が0件でした',
-            processingTimeSeconds: this.calculateProcessingTime(startTime),
-          };
-        }
-
-        const result = {
-          success: true,
-          csvBuffer: bothResult.csvBuffer,
-          resultCount: bothResult.rowCount,
-          spreadsheetUrl: bothResult.spreadsheetUrl,
-          processingTimeSeconds: this.calculateProcessingTime(startTime),
-        };
-
-        this.logger.info('ワークフロー実行完了（CSV+スプレッドシート）', {
-          resultCount: result.resultCount,
-          spreadsheetUrl: result.spreadsheetUrl,
-          processingTimeSeconds: result.processingTimeSeconds,
-        });
-
-        return result;
-      }
-
-      // folderIdが指定されていない場合はCSVのみ
-      this.logger.debug('GAS Webアプリを呼び出し中（CSVのみ）');
-      const csvBuffer = await this.retryWithBackoff(
-        () => this.gasClient.fetchCSV(params.region, params.industry, 30),
+      // Dify Workflowを呼び出し
+      this.logger.debug('Dify Workflowを呼び出し中');
+      const result = await this.retryWithBackoff(
+        () => this.difyClient.executeWorkflow(query, 30),
         maxRetries
       );
 
-      this.logger.debug(`CSVデータを取得: ${csvBuffer.length}バイト`);
+      this.logger.debug(`CSVデータを取得: ${result.csvBuffer.length}バイト`);
 
-      if (csvBuffer.length === 0) {
+      if (result.csvBuffer.length === 0 || result.rowCount === 0) {
         this.logger.warn('CSVデータが空でした', { query });
         return {
           success: false,
@@ -133,24 +91,19 @@ export class WorkflowOrchestrator {
         };
       }
 
-      // CSVの行数をカウント（ヘッダー除く）
-      const csvText = csvBuffer.toString('utf-8');
-      const lines = csvText.trim().split('\n');
-      const resultCount = Math.max(0, lines.length - 1); // ヘッダー行を除く
-
-      const result = {
+      const workflowResult: WorkflowExecutionResult = {
         success: true,
-        csvBuffer,
-        resultCount,
+        csvBuffer: result.csvBuffer,
+        resultCount: result.rowCount,
         processingTimeSeconds: this.calculateProcessingTime(startTime),
       };
 
       this.logger.info('ワークフロー実行完了', {
-        resultCount: result.resultCount,
-        processingTimeSeconds: result.processingTimeSeconds,
+        resultCount: workflowResult.resultCount,
+        processingTimeSeconds: workflowResult.processingTimeSeconds,
       });
 
-      return result;
+      return workflowResult;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       const errorMessage = err.message;

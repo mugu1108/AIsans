@@ -10,7 +10,7 @@ import { AIEmployeeService } from './domain/services/AIEmployeeService';
 import { LogService } from './domain/services/LogService';
 import { AIEmployeeRepository } from './infrastructure/database/repositories/AIEmployeeRepository';
 import { LogRepository } from './infrastructure/database/repositories/LogRepository';
-import { GASClient } from './infrastructure/gas/GASClient';
+import { DifyClient } from './infrastructure/dify/DifyClient';
 import { WorkflowOrchestrator } from './application/WorkflowOrchestrator';
 import { getEnvConfig, logEnvironmentSummary } from './config/env';
 import { disconnectPrisma } from './infrastructure/database/prisma';
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
 
     // Infrastructure層の初期化
     logger.info('Infrastructure層を初期化しています...');
-    const gasClient = new GASClient(env.GAS_API_URL, logger);
+    const difyClient = new DifyClient(env.DIFY_API_URL, env.DIFY_API_KEY, logger);
 
     // スプレッドシート機能のフォルダID（環境変数から取得）
     const spreadsheetFolderId = env.GOOGLE_DRIVE_FOLDER_ID;
@@ -55,7 +55,7 @@ async function main(): Promise<void> {
 
     // Application層の初期化
     logger.info('Application層を初期化しています...');
-    const orchestrator = new WorkflowOrchestrator(gasClient, logger);
+    const orchestrator = new WorkflowOrchestrator(difyClient, logger);
 
     // Interface層の初期化
     logger.info('Slackアダプターを初期化しています...');

@@ -25,8 +25,9 @@ export interface EnvironmentVariables {
   SLACK_SIGNING_SECRET: string;
   SLACK_APP_TOKEN?: string; // Socket Mode用（任意）
 
-  // GAS Web API
-  GAS_API_URL: string;
+  // Dify Workflow API
+  DIFY_API_URL: string;
+  DIFY_API_KEY: string;
 
   // Google API（任意）
   GOOGLE_SERVICE_ACCOUNT_KEY_PATH?: string;
@@ -54,7 +55,8 @@ const REQUIRED_ENV_VARS = [
   'DIRECT_URL',
   'SLACK_BOT_TOKEN',
   'SLACK_SIGNING_SECRET',
-  'GAS_API_URL',
+  'DIFY_API_URL',
+  'DIFY_API_KEY',
 ] as const;
 
 /**
@@ -151,7 +153,8 @@ function loadEnvironmentVariables(): EnvironmentVariables {
     SLACK_BOT_TOKEN: requireEnv('SLACK_BOT_TOKEN'),
     SLACK_SIGNING_SECRET: requireEnv('SLACK_SIGNING_SECRET'),
     SLACK_APP_TOKEN: getEnv('SLACK_APP_TOKEN'),
-    GAS_API_URL: requireEnv('GAS_API_URL'),
+    DIFY_API_URL: requireEnv('DIFY_API_URL'),
+    DIFY_API_KEY: requireEnv('DIFY_API_KEY'),
     GOOGLE_SERVICE_ACCOUNT_KEY_PATH: getEnv('GOOGLE_SERVICE_ACCOUNT_KEY_PATH'),
     GOOGLE_DRIVE_FOLDER_ID: getEnv('GOOGLE_DRIVE_FOLDER_ID'),
     PORT: getPort(),
@@ -196,7 +199,8 @@ export function logEnvironmentSummary(): void {
   console.log(`SLACK_BOT_TOKEN:                    ${maskToken(env.SLACK_BOT_TOKEN)}`);
   console.log(`SLACK_SIGNING_SECRET:               ${maskToken(env.SLACK_SIGNING_SECRET)}`);
   console.log(`SLACK_APP_TOKEN:                    ${env.SLACK_APP_TOKEN ? maskToken(env.SLACK_APP_TOKEN) : '(未設定)'}`);
-  console.log(`GAS_API_URL:                        ${maskUrl(env.GAS_API_URL)}`);
+  console.log(`DIFY_API_URL:                       ${env.DIFY_API_URL}`);
+  console.log(`DIFY_API_KEY:                       ${maskToken(env.DIFY_API_KEY)}`);
   console.log(`GOOGLE_SERVICE_ACCOUNT_KEY_PATH:    ${env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || '(未設定)'}`);
   console.log(`GOOGLE_DRIVE_FOLDER_ID:             ${env.GOOGLE_DRIVE_FOLDER_ID || '(未設定)'}`);
   console.log('========================================');
@@ -232,21 +236,6 @@ function maskToken(token: string): string {
   const visibleEnd = token.substring(token.length - 4);
 
   return `${visibleStart}****${visibleEnd}`;
-}
-
-/**
- * URLをマスク（スクリプトID部分のみ表示）
- *
- * @param url - URL文字列
- * @returns マスクされたURL
- */
-function maskUrl(url: string): string {
-  try {
-    const parsedUrl = new URL(url);
-    return `${parsedUrl.protocol}//${parsedUrl.host}/.../${parsedUrl.pathname.split('/').pop()}`;
-  } catch {
-    return '****';
-  }
 }
 
 // デフォルトエクスポート
