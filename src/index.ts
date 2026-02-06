@@ -122,7 +122,7 @@ async function main(): Promise<void> {
           const filename = `sales_list_${timestamp}.csv`;
 
           // 完了メッセージを投稿（スプレッドシートURLがある場合は一緒に表示）
-          let completeMessage = `✅ 完了しました！${result.resultCount}社のリストを作成しました（処理時間: ${result.processingTimeSeconds}秒）`;
+          let completeMessage = `✅ 完了しました！${result.resultCount}社のリストを作成しました`;
           if (result.spreadsheetUrl) {
             completeMessage += `\n\n📊 Googleスプレッドシートも作成しました！\n${result.spreadsheetUrl}`;
           }
