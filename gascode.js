@@ -49,7 +49,9 @@ const EXCLUDE_DOMAINS = [
   'factoring.southagency.co.jp', 'mics.city.shinagawa.tokyo.jp',
   'best100.v-tsushin.jp', 'isms.jp', 'itnabi.com',
   'appstars.io', 'ikesai.com', 'rekaizen.com',
-  'careerforum.net', 'startupclass.co.jp', 'herp.careers', 'readycrew.jp'
+  'careerforum.net', 'startupclass.co.jp', 'herp.careers', 'readycrew.jp',
+  // 企業検索・マッチングサイト
+  'biz.ne.jp', 'web-kanji.com', 'ipros.com'
 ];
 
 // ====================================
