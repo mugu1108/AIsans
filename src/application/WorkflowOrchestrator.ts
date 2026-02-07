@@ -56,12 +56,14 @@ export class WorkflowOrchestrator {
    * ワークフローを実行
    *
    * @param query - 検索クエリ（自然言語、例: "東京のIT企業"）
+   * @param targetCount - 目標件数（デフォルト: 30）
    * @param maxRetries - 最大リトライ回数（デフォルト: 3）
    * @param _folderId - スプレッドシート保存先フォルダID（現在未使用、Dify側で処理）
    * @returns 実行結果
    */
   async executeWorkflow(
     query: string,
+    targetCount: number = 30,
     maxRetries: number = 3,
     _folderId?: string
   ): Promise<WorkflowExecutionResult> {
@@ -69,6 +71,7 @@ export class WorkflowOrchestrator {
 
     this.logger.info('ワークフロー実行を開始', {
       query,
+      targetCount,
       maxRetries,
     });
 
@@ -76,7 +79,7 @@ export class WorkflowOrchestrator {
       // Dify Workflowを呼び出し
       this.logger.debug('Dify Workflowを呼び出し中');
       const result = await this.retryWithBackoff(
-        () => this.difyClient.executeWorkflow(query, 30),
+        () => this.difyClient.executeWorkflow(query, targetCount),
         maxRetries
       );
 
