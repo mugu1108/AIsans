@@ -44,7 +44,7 @@ export class DifyClient {
       const requestBody: DifyWorkflowRequest = {
         inputs: {
           user_input: query,
-          target_count: targetCount,
+          target_count: String(targetCount),
         },
         response_mode: 'blocking',
         user: userId,

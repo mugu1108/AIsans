@@ -11,9 +11,9 @@ export interface DifyWorkflowRequest {
      */
     user_input: string;
     /**
-     * 目標件数（任意、デフォルト: 30）
+     * 目標件数（任意、デフォルト: 30）※Difyのtext-input型のため文字列で送信
      */
-    target_count?: number;
+    target_count?: string;
   };
 
   /**

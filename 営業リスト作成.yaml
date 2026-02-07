@@ -1,0 +1,3344 @@
+app:
+  description: 営業リスト作成ワークフロー v10 - スクレイピングPython API移行・3ステップフロー
+  icon: 🤖
+  icon_background: '#E6F4EA'
+  mode: workflow
+  name: 営業リスト作成_v10
+  use_icon_as_answer_icon: true
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai:0.2.8@aae2be0913b8c6f0b80cff58e08d7a8b4c214569b41778413fcaea204561ff16
+    version: null
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/serper:0.0.2@a1776aefac753acc467b304058a143b9eefa13069124e39e07d15a7091a13fd9
+    version: null
+kind: app
+version: 0.5.0
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - description: ''
+    id: 4d85deaa-1a08-4734-a192-63aea946541e
+    name: GAS_WEBHOOK_URL
+    selector:
+    - env
+    - GAS_WEBHOOK_URL
+    value: ''
+    value_type: secret
+  - description: Python スクレイピングAPIのベースURL
+    id: b2c3d4e5-f6a7-8901-bcde-f23456789012
+    name: PYTHON_API_URL
+    selector:
+    - env
+    - PYTHON_API_URL
+    value: ''
+    value_type: secret
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 50
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: code
+      id: edge2
+      source: llm1
+      sourceHandle: source
+      target: code1
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1770199510362'
+        sourceType: tool
+        targetType: code
+      id: 1770199842270-source-1770199949932-target
+      source: '1770199842270'
+      sourceHandle: source
+      target: '1770199949932'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: code
+      id: 1770199510362-source-1770211282471-target
+      source: '1770199510362'
+      sourceHandle: source
+      target: '1770211282471'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 1770211509174-source-1770211566446-target
+      source: '1770211509174'
+      sourceHandle: source
+      target: '1770211566446'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: 1770211566446-source-1770211686312-target
+      source: '1770211566446'
+      sourceHandle: source
+      target: '1770211686312'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: 1770212988263-source-1770213153135-target
+      source: '1770212988263'
+      sourceHandle: source
+      target: '1770213153135'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: code
+        targetType: iteration
+      id: code1-source-1770199510362-target
+      source: code1
+      sourceHandle: source
+      target: '1770199510362'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: 1770211686312-true-converge-target
+      source: '1770211686312'
+      sourceHandle: 'true'
+      target: converge
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: converge-source-1770211748512-target
+      source: converge
+      sourceHandle: source
+      target: '1770211748512'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: 1770211686312-false-retry1_prep-target
+      source: '1770211686312'
+      sourceHandle: 'false'
+      target: retry1_prep
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: retry1_prep-source-retry1_llm-target
+      source: retry1_prep
+      sourceHandle: source
+      target: retry1_llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: retry1_llm-source-retry1_parse-target
+      source: retry1_llm
+      sourceHandle: source
+      target: retry1_parse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: iteration
+      id: retry1_parse-source-retry1_loop-target
+      source: retry1_parse
+      sourceHandle: source
+      target: retry1_loop
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: retry1_loop
+        sourceType: tool
+        targetType: code
+      id: retry1_serper-source-retry1_format-target
+      source: retry1_serper
+      sourceHandle: source
+      target: retry1_format
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: code
+      id: retry1_loop-source-retry1_merge_new-target
+      source: retry1_loop
+      sourceHandle: source
+      target: retry1_merge_new
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: retry1_merge_new-source-retry1_cleanse-target
+      source: retry1_merge_new
+      sourceHandle: source
+      target: retry1_cleanse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: retry1_cleanse-source-retry1_parse_cl-target
+      source: retry1_cleanse
+      sourceHandle: source
+      target: retry1_parse_cl
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: retry1_parse_cl-source-retry1_accum-target
+      source: retry1_parse_cl
+      sourceHandle: source
+      target: retry1_accum
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: retry1_accum-source-retry1_check-target
+      source: retry1_accum
+      sourceHandle: source
+      target: retry1_check
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: retry1_check-true-converge-target
+      source: retry1_check
+      sourceHandle: 'true'
+      target: converge
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: retry1_check-false-retry2_prep-target
+      source: retry1_check
+      sourceHandle: 'false'
+      target: retry2_prep
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: retry2_prep-source-retry2_llm-target
+      source: retry2_prep
+      sourceHandle: source
+      target: retry2_llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: retry2_llm-source-retry2_parse-target
+      source: retry2_llm
+      sourceHandle: source
+      target: retry2_parse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: iteration
+      id: retry2_parse-source-retry2_loop-target
+      source: retry2_parse
+      sourceHandle: source
+      target: retry2_loop
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: retry2_loop
+        sourceType: tool
+        targetType: code
+      id: retry2_serper-source-retry2_format-target
+      source: retry2_serper
+      sourceHandle: source
+      target: retry2_format
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: code
+      id: retry2_loop-source-retry2_merge_new-target
+      source: retry2_loop
+      sourceHandle: source
+      target: retry2_merge_new
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: retry2_merge_new-source-retry2_cleanse-target
+      source: retry2_merge_new
+      sourceHandle: source
+      target: retry2_cleanse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: retry2_cleanse-source-retry2_parse_cl-target
+      source: retry2_cleanse
+      sourceHandle: source
+      target: retry2_parse_cl
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: retry2_parse_cl-source-retry2_accum-target
+      source: retry2_parse_cl
+      sourceHandle: source
+      target: retry2_accum
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: retry2_accum-source-retry2_check-target
+      source: retry2_accum
+      sourceHandle: source
+      target: retry2_check
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: retry2_check-true-converge-target
+      source: retry2_check
+      sourceHandle: 'true'
+      target: converge
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: retry2_check-false-retry3_prep-target
+      source: retry2_check
+      sourceHandle: 'false'
+      target: retry3_prep
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: retry3_prep-source-retry3_llm-target
+      source: retry3_prep
+      sourceHandle: source
+      target: retry3_llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: retry3_llm-source-retry3_parse-target
+      source: retry3_llm
+      sourceHandle: source
+      target: retry3_parse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: iteration
+      id: retry3_parse-source-retry3_loop-target
+      source: retry3_parse
+      sourceHandle: source
+      target: retry3_loop
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: retry3_loop
+        sourceType: tool
+        targetType: code
+      id: retry3_serper-source-retry3_format-target
+      source: retry3_serper
+      sourceHandle: source
+      target: retry3_format
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: code
+      id: retry3_loop-source-retry3_merge_new-target
+      source: retry3_loop
+      sourceHandle: source
+      target: retry3_merge_new
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: retry3_merge_new-source-retry3_cleanse-target
+      source: retry3_merge_new
+      sourceHandle: source
+      target: retry3_cleanse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: retry3_cleanse-source-retry3_parse_cl-target
+      source: retry3_cleanse
+      sourceHandle: source
+      target: retry3_parse_cl
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: retry3_parse_cl-source-retry3_accum-target
+      source: retry3_parse_cl
+      sourceHandle: source
+      target: retry3_accum
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: retry3_accum-source-retry3_check-target
+      source: retry3_accum
+      sourceHandle: source
+      target: retry3_check
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: retry3_check-true-converge-target
+      source: retry3_check
+      sourceHandle: 'true'
+      target: converge
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: retry3_check-false-converge-target
+      source: retry3_check
+      sourceHandle: 'false'
+      target: converge
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: http-request
+      id: start-source-fetch_existing-target
+      source: start
+      sourceHandle: source
+      target: fetch_existing
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: fetch_existing-source-parse_existing-target
+      source: fetch_existing
+      sourceHandle: source
+      target: parse_existing
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: parse_existing-source-llm1-target
+      source: parse_existing
+      sourceHandle: source
+      target: llm1
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: 1770211282471-source-pre_filter-target
+      source: '1770211282471'
+      sourceHandle: source
+      target: pre_filter
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: pre_filter-source-1770211509174-target
+      source: pre_filter
+      sourceHandle: source
+      target: '1770211509174'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1770199510362'
+        sourceType: iteration-start
+        targetType: tool
+      id: 1770199510362start-source-1770199842270-target
+      source: 1770199510362start
+      sourceHandle: source
+      target: '1770199842270'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: retry1_loop
+        sourceType: iteration-start
+        targetType: tool
+      id: retry1_loop_start-source-retry1_serper-target
+      source: retry1_loop_start
+      sourceHandle: source
+      target: retry1_serper
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: retry2_loop
+        sourceType: iteration-start
+        targetType: tool
+      id: retry2_loop_start-source-retry2_serper-target
+      source: retry2_loop_start
+      sourceHandle: source
+      target: retry2_serper
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: retry3_loop
+        sourceType: iteration-start
+        targetType: tool
+      id: retry3_loop_start-source-retry3_serper-target
+      source: retry3_loop_start
+      sourceHandle: source
+      target: retry3_serper
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: 1770211748512-source-gas_save_http-target
+      source: '1770211748512'
+      sourceHandle: source
+      target: gas_save_http
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: gas_save_http-source-gas_save_parse-target
+      source: gas_save_http
+      sourceHandle: source
+      target: gas_save_parse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: gas_save_parse-source-python_scrape_http-target
+      source: gas_save_parse
+      sourceHandle: source
+      target: python_scrape_http
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: python_scrape_http-source-scrape_parse-target
+      source: python_scrape_http
+      sourceHandle: source
+      target: scrape_parse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: scrape_parse-source-gas_update_http-target
+      source: scrape_parse
+      sourceHandle: source
+      target: gas_update_http
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: gas_update_http-source-final_format-target
+      source: gas_update_http
+      sourceHandle: source
+      target: final_format
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: final_format-source-1770212988263-target
+      source: final_format
+      sourceHandle: source
+      target: '1770212988263'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 開始
+        type: start
+        variables:
+        - label: user_input
+          max_length: 1000
+          options: []
+          required: true
+          type: text-input
+          variable: user_input
+        - default: '30'
+          label: target_count
+          max_length: 10
+          options: []
+          required: false
+          type: text-input
+          variable: target_count
+      height: 109
+      id: start
+      position:
+        x: 80.23259828448965
+        y: 105.11703232915971
+      positionAbsolute:
+        x: 80.23259828448965
+        y: 105.11703232915971
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 入力から検索クエリを生成
+        model:
+          completion_params:
+            temperature: 0.3
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: sys1
+          role: system
+          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\nユーザーの入力から、企業検索に最適な検索クエリを**必ず25〜30個**生成してください。\n30個に近いほど良い結果が得られます。少なすぎると企業数が不足します。\n\n**重要：以下の全カテゴリから満遍なくクエリを生成してください：**\n\n### A. 業種の細分化（8〜10個）\n例：IT企業 → システム開発会社、Web制作会社、SaaS企業、アプリ開発会社、インフラ構築、セキュリティ企業、AI開発会社、クラウドサービス、データ分析、IoT企業\n\n### B. 地域の細分化（6〜8個）\n例：東京 → 港区、渋谷区、新宿区、千代田区、品川区、中央区、目黒区、世田谷区\n\n### C. 企業規模・特徴（4〜5個）\n大手、中堅、中小、ベンチャー、スタートアップ、老舗\n\n### D. リスト・一覧系クエリ（4〜5個）\n「〇〇 企業一覧」「〇〇 会社 まとめ」「〇〇 企業 ランキング」「〇〇協会 会員」「〇〇 法人 リスト」\n\n### E. 公式サイト特化クエリ（3〜4個）\n「〇〇 株式会社 本社」「〇〇 企業 会社概要」「〇〇 co.jp」\n\n出力形式は必ず以下のJSON形式のみで出力してください：\n\n{\n  \"search_intent\": {\n    \"region\": \"抽出した地域\",\n    \"industry\": \"抽出した業種\",\n    \"conditions\": [\"抽出した条件\"],\n    \"summary\": \"検索意図の要約文\"\n  },\n  \"search_queries\": [\n    \"検索クエリ1\",\n    \"検索クエリ2\",\n    ...\n  ]\n}\n\n検索クエリ生成ルール：\n1. 「株式会社」「企業」「会社」などを含める\n2. 求人サイトではなく公式サイトがヒットしやすいクエリにする\n3. 同じような結果が返らないよう、クエリごとに切り口を変える\n4. **必ず25個以上生成すること。20個未満は不可。**\n"
+        - id: user1
+          role: user
+          text: '{{#start.user_input#}}'
+        selected: false
+        title: 検索クエリ生成
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 116
+      id: llm1
+      position:
+        x: 372.48430827895334
+        y: 292.92256284836975
+      positionAbsolute:
+        x: 372.48430827895334
+        y: 292.92256284836975
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\ndef main(llm_output: str) -> dict:\n    try:\n        text = llm_output.strip()\n        json_match = re.search(r'\\{[\\s\\S]*\\}', text)\n        if json_match:\n            text = json_match.group(0)\n        data = json.loads(text)\n\n        search_intent = data.get(\"search_intent\", {})\n        search_queries = data.get(\"search_queries\", [])\n\n        return {\n            \"search_intent\": json.dumps(search_intent, ensure_ascii=False),\n            \"search_queries\": search_queries,\n            \"query_count\": len(search_queries)\n        }\n    except Exception as e:\n        return {\n            \"search_intent\": \"{}\",\n            \"search_queries\": [llm_output],\n            \"query_count\": 1\n        }"
+        code_language: python3
+        desc: LLM出力を解析
+        outputs:
+          query_count:
+            children: null
+            type: number
+          search_intent:
+            children: null
+            type: string
+          search_queries:
+            children: null
+            type: array[string]
+        selected: false
+        title: JSON解析
+        type: code
+        variables:
+        - value_selector:
+          - llm1
+          - text
+          variable: llm_output
+      height: 80
+      id: code1
+      position:
+        x: 636.3271892006062
+        y: 292.92256284836975
+      positionAbsolute:
+        x: 636.3271892006062
+        y: 292.92256284836975
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        error_handle_mode: terminated
+        flatten_output: true
+        is_parallel: false
+        iterator_input_type: array[string]
+        iterator_selector:
+        - code1
+        - search_queries
+        output_selector:
+        - '1770199949932'
+        - search_results
+        output_type: array[object]
+        parallel_nums: 10
+        selected: false
+        start_node_id: 1770199510362start
+        title: 検索ループ
+        type: iteration
+        width: 688
+      height: 146
+      id: '1770199510362'
+      position:
+        x: 914.5004839564497
+        y: 292.92256284836975
+      positionAbsolute:
+        x: 914.5004839564497
+        y: 292.92256284836975
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 688
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: 1770199510362start
+      parentId: '1770199510362'
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 938.5004839564497
+        y: 360.92256284836975
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        isInLoop: false
+        is_team_authorization: false
+        iteration_id: '1770199510362'
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: used for searching
+            ja_JP: used for searching
+            pt_BR: used for searching
+            zh_Hans: 用于搜索网页内容
+          label:
+            en_US: Query string
+            ja_JP: Query string
+            pt_BR: Query string
+            zh_Hans: 查询语句
+          llm_description: key words for searching
+          max: null
+          min: null
+          name: query
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          query: ''
+        plugin_id: langgenius/serper
+        plugin_unique_identifier: langgenius/serper:0.0.2@a1776aefac753acc467b304058a143b9eefa13069124e39e07d15a7091a13fd9
+        provider_icon: https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=93148327-6ca1-42fc-bf98-16d73ed2f0a2&filename=2b3892ad83c5e4dc342c060f3bd37067461728ef5e7abeeed8687e9fa7dcdc84.svg
+        provider_id: langgenius/serper/serper
+        provider_name: langgenius/serper/serper
+        provider_type: builtin
+        selected: false
+        title: Serper
+        tool_configurations: {}
+        tool_description: A tool for performing a Google search and extracting snippets and webpages.Input should be a search query.
+        tool_label: Serper
+        tool_name: serper
+        tool_node_version: '2'
+        tool_parameters:
+          num:
+            type: mixed
+            value: '60'
+          query:
+            type: mixed
+            value: '{{#1770199510362.item#}}'
+        type: tool
+      height: 52
+      id: '1770199842270'
+      parentId: '1770199510362'
+      position:
+        x: 128
+        y: 68
+      positionAbsolute:
+        x: 1042.5004839564497
+        y: 360.92256284836975
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    - data:
+        code: "import json\n\ndef main(serper_result: str, current_query: str) -> dict:\n    results = []\n    try:\n        data = json.loads(serper_result) if isinstance(serper_result, str) else serper_result\n        if isinstance(data, list) and len(data) > 0:\n            data = data[0]\n        organic = data.get(\"organic\", [])\n        for item in organic:\n            results.append({\n                \"title\": item.get(\"title\", \"\"),\n                \"link\": item.get(\"link\", \"\"),\n                \"snippet\": item.get(\"snippet\", \"\"),\n                \"query\": current_query\n            })\n    except:\n        pass\n    return {\"search_results\": results, \"result_count\": len(results)}"
+        code_language: python3
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1770199510362'
+        outputs:
+          result_count:
+            children: null
+            type: number
+          search_results:
+            children: null
+            type: array[object]
+        selected: false
+        title: 検索結果整形
+        type: code
+        variables:
+        - value_selector:
+          - '1770199842270'
+          - json
+          value_type: string
+          variable: serper_result
+        - value_selector:
+          - '1770199510362'
+          - item
+          value_type: string
+          variable: current_query
+      height: 52
+      id: '1770199949932'
+      parentId: '1770199510362'
+      position:
+        x: 430
+        y: 68
+      positionAbsolute:
+        x: 1344.5004839564497
+        y: 360.92256284836975
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    - data:
+        code: "import json\n\ndef main(all_results: list) -> dict:\n    merged = []\n    for batch in all_results:\n        if isinstance(batch, list):\n            merged.extend(batch)\n        elif isinstance(batch, dict):\n            if \"search_results\" in batch:\n                merged.extend(batch[\"search_results\"])\n            elif \"title\" in batch or \"link\" in batch:\n                merged.append(batch)\n    return {\n        \"all_search_results\": json.dumps(merged, ensure_ascii=False),\n        \"total_raw_count\": len(merged)\n    }"
+        code_language: python3
+        outputs:
+          all_search_results:
+            children: null
+            type: string
+          total_raw_count:
+            children: null
+            type: number
+        selected: false
+        title: 結果統合
+        type: code
+        variables:
+        - value_selector:
+          - '1770199510362'
+          - output
+          value_type: array[string]
+          variable: all_results
+      height: 52
+      id: '1770211282471'
+      position:
+        x: 1628.9186026267962
+        y: 292.92256284836975
+      positionAbsolute:
+        x: 1628.9186026267962
+        y: 292.92256284836975
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 9c8a74f9-47d4-4fd0-96ed-d716bd463213
+          role: system
+          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#start.target_count#}}件以上にしてください。**\n入力データに{{#start.target_count#}}件以上の候補がある場合、出力が{{#start.target_count#}}件未満になることは許されません。\n{{#start.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect, wantedly, openwork,\
+            \ vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#start.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
+        - id: 73eb4c43-7765-4ecb-9dbe-e3ddf6760391
+          role: user
+          text: '## 検索意図
+
+            {{#code1.search_intent#}}
+
+
+            ## 既存企業ドメイン（除外必須）
+
+            {{#parse_existing.existing_domains#}}
+
+
+            ## 検索結果
+
+            {{#pre_filter.filtered_results#}}
+
+
+            上記の検索結果をクレンジングし、有効な企業リストをJSON形式で出力してください。
+
+            **重要：「既存企業ドメイン」に含まれるドメインは必ず除外してください。**'
+        selected: false
+        title: クレンジング
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: '1770211509174'
+      position:
+        x: 2192.5284656341028
+        y: 292.92256284836975
+      positionAbsolute:
+        x: 2192.5284656341028
+        y: 292.92256284836975
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\ndef main(llm_output: str, target_count_str: str) -> dict:\n    target_count = int(target_count_str) if target_count_str else 30\n    try:\n        text = llm_output.strip()\n        \n        # コードブロックを除去\n        json_match = re.search(r'```(?:json)?\\s*([\\s\\S]*?)\\s*```', text)\n        if json_match:\n            text = json_match.group(1)\n        else:\n            # コードブロックがない場合、JSON部分を抽出\n            json_match = re.search(r'\\{[\\s\\S]*\\}', text)\n            if json_match:\n                text = json_match.group(0)\n        \n        data = json.loads(text.strip())\n        cleaned = data.get(\"cleaned_companies\", [])\n        \n        return {\n            \"cleaned_companies\": cleaned,\n            \"cleaned_companies_str\": json.dumps(cleaned, ensure_ascii=False),\n            \"valid_count\": len(cleaned),\n            \"is_target_met\": 1 if len(cleaned) >= target_count else 0\n        }\n    except Exception as e:\n        return\
+          \ {\n            \"cleaned_companies\": [],\n            \"cleaned_companies_str\": \"[]\",\n            \"valid_count\": 0,\n            \"is_target_met\": 0\n        }"
+        code_language: python3
+        outputs:
+          cleaned_companies:
+            children: null
+            type: array[object]
+          cleaned_companies_str:
+            children: null
+            type: string
+          is_target_met:
+            children: null
+            type: number
+          valid_count:
+            children: null
+            type: number
+        selected: false
+        title: クレンジング結果解析
+        type: code
+        variables:
+        - value_selector:
+          - '1770211509174'
+          - text
+          value_type: string
+          variable: llm_output
+        - value_selector:
+          - start
+          - target_count
+          value_type: string
+          variable: target_count_str
+      height: 52
+      id: '1770211566446'
+      position:
+        x: 97.3408578249215
+        y: 556.2423359116813
+      positionAbsolute:
+        x: 97.3408578249215
+        y: 556.2423359116813
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: '='
+            id: 9a1ca000-0d01-4686-9c26-7c633522be04
+            value: '1'
+            varType: number
+            variable_selector:
+            - '1770211566446'
+            - is_target_met
+          id: 'true'
+          logical_operator: and
+        selected: false
+        title: 件数チェック
+        type: if-else
+      height: 124
+      id: '1770211686312'
+      position:
+        x: 392.2952684864073
+        y: 556.2423359116813
+      positionAbsolute:
+        x: 392.2952684864073
+        y: 556.2423359116813
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(cleaned_companies_str: str, user_input: str, target_count_str: str) -> dict:\n    target_count = int(target_count_str) if target_count_str else 30\n    try:\n        companies = json.loads(cleaned_companies_str) if isinstance(cleaned_companies_str, str) else cleaned_companies_str\n        if not isinstance(companies, list):\n            companies = []\n\n        sorted_companies = sorted(\n            companies,\n            key=lambda x: x.get(\"relevance_score\", 0),\n            reverse=True\n        )\n\n        top_companies = sorted_companies[:target_count]\n\n        companies_for_gas = []\n        for company in top_companies:\n            companies_for_gas.append({\n                \"company_name\": company.get(\"company_name\", \"\"),\n                \"url\": company.get(\"url\", \"\")\n            })\n\n        # GAS基本保存用リクエスト\n        gas_basic_request_json = json.dumps({\n            \"companies\": companies_for_gas,\n            \"search_keyword\"\
+          : user_input,\n            \"target_count\": target_count\n        }, ensure_ascii=False)\n\n        return {\n            \"gas_basic_request_json\": gas_basic_request_json,\n            \"final_count\": len(companies_for_gas)\n        }\n    except Exception as e:\n        return {\n            \"gas_basic_request_json\": json.dumps({\"companies\": [], \"search_keyword\": user_input or \"\", \"target_count\": target_count}, ensure_ascii=False),\n            \"final_count\": 0\n        }"
+        code_language: python3
+        outputs:
+          gas_basic_request_json:
+            children: null
+            type: string
+          final_count:
+            children: null
+            type: number
+        selected: false
+        title: 上位抽出
+        type: code
+        variables:
+        - value_selector:
+          - converge
+          - final_companies_str
+          value_type: string
+          variable: cleaned_companies_str
+        - value_selector:
+          - start
+          - user_input
+          value_type: string
+          variable: user_input
+        - value_selector:
+          - start
+          - target_count
+          value_type: string
+          variable: target_count_str
+      height: 52
+      id: '1770211748512'
+      position:
+        x: 678.586279479432
+        y: 586.9912040484045
+      positionAbsolute:
+        x: 678.586279479432
+        y: 586.9912040484045
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(scraped_data: list, user_input: str, scraped_count: int, target_count_str: str) -> dict:\n    target_count = int(target_count_str) if target_count_str else 30\n    csv_lines = []\n    csv_lines.append('企業名,企業HP_URL,お問い合わせURL,電話番号')\n\n    for company in scraped_data:\n        row = [\n            escape_csv(company.get('company_name', '')),\n            escape_csv(company.get('base_url', '')),\n            escape_csv(company.get('contact_url', '')),\n            escape_csv(company.get('phone', ''))\n        ]\n        csv_lines.append(','.join(row))\n\n    csv_content = '\\n'.join(csv_lines)\n\n    status = f\"✅ {target_count}件以上\" if scraped_count >= target_count else f\"⚠️ {scraped_count}件（{target_count}件未満ですが最大限取得しました）\"\n\n    summary = f\"\"\"## 営業リスト作成完了\n\n**検索キーワード**: {user_input}\n**目標件数**: {target_count}件\n**取得件数**: {scraped_count}件\n**ステータス**: {status}\n\n### CSV内容\n```csv\n{csv_content}\n```\n\"\"\"\n\n    return {\n        \"csv_content\"\
+          : csv_content,\n        \"summary\": summary,\n        \"total_count\": scraped_count\n    }\n\ndef escape_csv(value) -> str:\n    if not value:\n        return ''\n    value = str(value)\n    if ',' in value or '\\n' in value or '\"' in value:\n        return '\"' + value.replace('\"', '\"\"') + '\"'\n    return value"
+        code_language: python3
+        outputs:
+          csv_content:
+            children: null
+            type: string
+          summary:
+            children: null
+            type: string
+          total_count:
+            children: null
+            type: number
+        selected: false
+        title: csv
+        type: code
+        variables:
+        - value_selector:
+          - final_format
+          - scraped_data
+          value_type: array[object]
+          variable: scraped_data
+        - value_selector:
+          - start
+          - user_input
+          value_type: string
+          variable: user_input
+        - value_selector:
+          - final_format
+          - scraped_count
+          value_type: number
+          variable: scraped_count
+        - value_selector:
+          - start
+          - target_count
+          value_type: string
+          variable: target_count_str
+      height: 52
+      id: '1770212988263'
+      position:
+        x: 2605.0
+        y: 586.9912040484045
+      positionAbsolute:
+        x: 2605.0
+        y: 586.9912040484045
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        outputs:
+        - value_selector:
+          - '1770212988263'
+          - summary
+          value_type: string
+          variable: summary
+        selected: false
+        title: 出力
+        type: end
+      height: 88
+      id: '1770213153135'
+      position:
+        x: 2880.0
+        y: 586.9912040484045
+      positionAbsolute:
+        x: 2880.0
+        y: 586.9912040484045
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(\n    orig_str: str, orig_count: int,\n    r1_str: str, r1_count: int,\n    r2_str: str, r2_count: int,\n    r3_str: str, r3_count: int\n) -> dict:\n    \"\"\"最後に実行された累積結果（最大件数）を採用\"\"\"\n    best_str = \"[]\"\n    best_count = 0\n\n    for s, c in [(orig_str, orig_count), (r1_str, r1_count), (r2_str, r2_count), (r3_str, r3_count)]:\n        if c and c > best_count:\n            best_str = s\n            best_count = c\n\n    return {\n        \"final_companies_str\": best_str,\n        \"final_count\": best_count\n    }"
+        code_language: python3
+        outputs:
+          final_companies_str:
+            children: null
+            type: string
+          final_count:
+            children: null
+            type: number
+        selected: false
+        title: 結果収束
+        type: code
+        variables:
+        - value_selector:
+          - '1770211566446'
+          - cleaned_companies_str
+          value_type: string
+          variable: orig_str
+        - value_selector:
+          - '1770211566446'
+          - valid_count
+          value_type: number
+          variable: orig_count
+        - value_selector:
+          - retry1_accum
+          - accumulated_str
+          value_type: string
+          variable: r1_str
+        - value_selector:
+          - retry1_accum
+          - accumulated_count
+          value_type: number
+          variable: r1_count
+        - value_selector:
+          - retry2_accum
+          - accumulated_str
+          value_type: string
+          variable: r2_str
+        - value_selector:
+          - retry2_accum
+          - accumulated_count
+          value_type: number
+          variable: r2_count
+        - value_selector:
+          - retry3_accum
+          - accumulated_str
+          value_type: string
+          variable: r3_str
+        - value_selector:
+          - retry3_accum
+          - accumulated_count
+          value_type: number
+          variable: r3_count
+      height: 52
+      id: converge
+      position:
+        x: 515.531726884645
+        y: 735.7926614457448
+      positionAbsolute:
+        x: 515.531726884645
+        y: 735.7926614457448
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(accumulated_str: str, accumulated_count: int, target_count_str: str) -> dict:\n    target_count = int(target_count_str) if target_count_str else 30\n    try:\n        companies = json.loads(accumulated_str) if isinstance(accumulated_str, str) else accumulated_str\n        if not isinstance(companies, list):\n            companies = []\n        existing_names = [c.get(\"company_name\", \"\") for c in companies if c.get(\"company_name\")]\n        existing_domains = [c.get(\"domain\", \"\") for c in companies if c.get(\"domain\")]\n        needed = target_count - accumulated_count\n        return {\n            \"existing_names_str\": json.dumps(existing_names, ensure_ascii=False),\n            \"existing_domains_str\": json.dumps(existing_domains, ensure_ascii=False),\n            \"existing_count\": accumulated_count,\n            \"needed_count\": max(needed, 0)\n        }\n    except:\n        return {\n            \"existing_names_str\": \"[]\",\n\
+          \            \"existing_domains_str\": \"[]\",\n            \"existing_count\": 0,\n            \"needed_count\": target_count\n        }"
+        code_language: python3
+        outputs:
+          existing_count:
+            children: null
+            type: number
+          existing_domains_str:
+            children: null
+            type: string
+          existing_names_str:
+            children: null
+            type: string
+          needed_count:
+            children: null
+            type: number
+        selected: false
+        title: 再検索準備1
+        type: code
+        variables:
+        - value_selector:
+          - '1770211566446'
+          - cleaned_companies_str
+          value_type: string
+          variable: accumulated_str
+        - value_selector:
+          - '1770211566446'
+          - valid_count
+          value_type: number
+          variable: accumulated_count
+        - value_selector:
+          - start
+          - target_count
+          value_type: string
+          variable: target_count_str
+      height: 52
+      id: retry1_prep
+      position:
+        x: 97
+        y: 830
+      positionAbsolute:
+        x: 97
+        y: 830
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.6
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: retry1_sys
+          role: system
+          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\n既存の企業リストでは{{#start.target_count#}}件に足りていません。新しい企業を見つけるための検索クエリを**20〜25個**生成してください。多いほど確実に{{#start.target_count#}}件に到達できます。\n\nこれは1回目の再検索です。**前回までとは完全に異なるアプローチ**で検索してください：\n\n**必須：以下の切り口を全て試してください**\n1. **業種の別表現**：同じ業種でも別の言い方（IT→情報通信、システム→ソフトウェア、Web→インターネット）\n2. **地域の細分化**：区単位、駅名、エリア名（渋谷、六本木、丸の内、五反田、大崎）\n3. **リスト/まとめ系**：「〇〇 企業一覧」「〇〇 おすすめ企業」「〇〇 優良企業」\n4. **業界団体**：「〇〇協会 会員企業」「〇〇連盟」\n5. **特化検索**：site:co.jp、「株式会社 〇〇 本社 東京」\n6. **関連業種**：メインの業種に近い別業種\n\n出力は必ず以下のJSON形式のみ：\n{\n  \"search_queries\": [\"クエリ1\", \"クエリ2\", ...]\n}"
+        - id: retry1_user
+          role: user
+          text: '## 元の検索キーワード
+
+            {{#start.user_input#}}
+
+
+            ## 既に取得済みの企業名リスト
+
+            {{#retry1_prep.existing_names_str#}}
+
+
+            ## 現在の取得数
+
+            {{#retry1_prep.existing_count#}}件（あと{{#retry1_prep.needed_count#}}件必要）
+
+
+            上記と重複しない新しい企業を見つけるため、これまでと異なるアプローチの検索クエリを生成してください。'
+        selected: false
+        title: 再検索クエリ生成1
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: retry1_llm
+      position:
+        x: 372
+        y: 830
+      positionAbsolute:
+        x: 372
+        y: 830
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\ndef main(llm_output: str) -> dict:\n    try:\n        text = llm_output.strip()\n        json_match = re.search(r'\\{[\\s\\S]*\\}', text)\n        if json_match:\n            text = json_match.group(0)\n        data = json.loads(text)\n        queries = data.get(\"search_queries\", [])\n        return {\"search_queries\": queries, \"query_count\": len(queries)}\n    except:\n        return {\"search_queries\": [llm_output], \"query_count\": 1}"
+        code_language: python3
+        outputs:
+          query_count:
+            children: null
+            type: number
+          search_queries:
+            children: null
+            type: array[string]
+        selected: false
+        title: 再検索クエリ解析1
+        type: code
+        variables:
+        - value_selector:
+          - retry1_llm
+          - text
+          value_type: string
+          variable: llm_output
+      height: 52
+      id: retry1_parse
+      position:
+        x: 647
+        y: 830
+      positionAbsolute:
+        x: 647
+        y: 830
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        error_handle_mode: terminated
+        flatten_output: true
+        is_parallel: false
+        iterator_input_type: array[string]
+        iterator_selector:
+        - retry1_parse
+        - search_queries
+        output_selector:
+        - retry1_format
+        - search_results
+        output_type: array[object]
+        parallel_nums: 10
+        selected: false
+        start_node_id: retry1_loop_start
+        title: 再検索ループ1
+        type: iteration
+        width: 688
+      height: 146
+      id: retry1_loop
+      position:
+        x: 922
+        y: 830
+      positionAbsolute:
+        x: 922
+        y: 830
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 688
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: retry1_loop_start
+      parentId: retry1_loop
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 946
+        y: 898
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        isInLoop: false
+        is_team_authorization: false
+        iteration_id: retry1_loop
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: used for searching
+            ja_JP: used for searching
+            pt_BR: used for searching
+            zh_Hans: 用于搜索网页内容
+          label:
+            en_US: Query string
+            ja_JP: Query string
+            pt_BR: Query string
+            zh_Hans: 查询语句
+          llm_description: key words for searching
+          max: null
+          min: null
+          name: query
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          query: ''
+        plugin_id: langgenius/serper
+        plugin_unique_identifier: langgenius/serper:0.0.2@a1776aefac753acc467b304058a143b9eefa13069124e39e07d15a7091a13fd9
+        provider_icon: https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=93148327-6ca1-42fc-bf98-16d73ed2f0a2&filename=2b3892ad83c5e4dc342c060f3bd37067461728ef5e7abeeed8687e9fa7dcdc84.svg
+        provider_id: langgenius/serper/serper
+        provider_name: langgenius/serper/serper
+        provider_type: builtin
+        selected: false
+        title: Serper1
+        tool_configurations: {}
+        tool_description: A tool for performing a Google search and extracting snippets and webpages.Input should be a search query.
+        tool_label: Serper
+        tool_name: serper
+        tool_node_version: '2'
+        tool_parameters:
+          num:
+            type: mixed
+            value: '60'
+          query:
+            type: mixed
+            value: '{{#retry1_loop.item#}}'
+        type: tool
+      height: 52
+      id: retry1_serper
+      parentId: retry1_loop
+      position:
+        x: 128
+        y: 68
+      positionAbsolute:
+        x: 1050
+        y: 898
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    - data:
+        code: "import json\n\ndef main(serper_result: str, current_query: str) -> dict:\n    results = []\n    try:\n        data = json.loads(serper_result) if isinstance(serper_result, str) else serper_result\n        if isinstance(data, list) and len(data) > 0:\n            data = data[0]\n        organic = data.get(\"organic\", [])\n        for item in organic:\n            results.append({\n                \"title\": item.get(\"title\", \"\"),\n                \"link\": item.get(\"link\", \"\"),\n                \"snippet\": item.get(\"snippet\", \"\"),\n                \"query\": current_query\n            })\n    except:\n        pass\n    return {\"search_results\": results, \"result_count\": len(results)}"
+        code_language: python3
+        isInIteration: true
+        isInLoop: false
+        iteration_id: retry1_loop
+        outputs:
+          result_count:
+            children: null
+            type: number
+          search_results:
+            children: null
+            type: array[object]
+        selected: false
+        title: 再検索結果整形1
+        type: code
+        variables:
+        - value_selector:
+          - retry1_serper
+          - json
+          value_type: string
+          variable: serper_result
+        - value_selector:
+          - retry1_loop
+          - item
+          value_type: string
+          variable: current_query
+      height: 52
+      id: retry1_format
+      parentId: retry1_loop
+      position:
+        x: 430
+        y: 68
+      positionAbsolute:
+        x: 1352
+        y: 898
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    - data:
+        code: "import json\nimport re\n\ndef main(new_results: list, existing_domains: str, prev_accumulated_str: str) -> dict:\n    EXCLUDE_DOMAINS = [\n        'indeed.com', 'indeed.jp', 'mynavi.jp', 'rikunabi.com', 'doda.jp',\n        'en-japan.com', 'baitoru.com', 'yahoo.co.jp', 'facebook.com',\n        'twitter.com', 'x.com', 'instagram.com', 'youtube.com', 'tiktok.com',\n        'wikipedia.org', 'ja.wikipedia.org', 'google.com', 'amazon.co.jp',\n        'rakuten.co.jp', 'linkedin.com', 'bizmap.jp', 'baseconnect.in',\n        'wantedly.com', 'openwork.jp', 'vorkers.com', 'prtimes.jp',\n        'note.com', 'qiita.com', 'zenn.dev',\n        'navitime.co.jp', 'mapion.co.jp', 'ekiten.jp',\n        'hotpepper.jp', 'tabelog.com', 'gnavi.co.jp', 'retty.me',\n        'career-x.co.jp', 'type.jp', 'green-japan.com',\n        'cocomiru.com', 'hnavi.co.jp', 'rekaiz.com',\n    ]\n    EXCLUDE_SUFFIXES = ['.go.jp', '.lg.jp', '.ed.jp', '.ac.jp']\n\n    def extract_domain(url):\n        match = re.search(r'https?://([^/]+)',\
+          \ url or '')\n        return match.group(1).lower() if match else ''\n\n    def is_excluded(domain):\n        for ex in EXCLUDE_DOMAINS:\n            if ex in domain:\n                return True\n        for suffix in EXCLUDE_SUFFIXES:\n            if domain.endswith(suffix):\n                return True\n        return False\n\n    try:\n        ex_domains = json.loads(existing_domains) if isinstance(existing_domains, str) else existing_domains\n        if not isinstance(ex_domains, list): ex_domains = []\n    except:\n        ex_domains = []\n\n    try:\n        prev = json.loads(prev_accumulated_str) if isinstance(prev_accumulated_str, str) else prev_accumulated_str\n        if not isinstance(prev, list): prev = []\n    except:\n        prev = []\n\n    seen_domains = set(d.strip().lower() for d in ex_domains if d)\n    for c in prev:\n        d = c.get(\"domain\", \"\").strip().lower()\n        if d: seen_domains.add(d)\n\n    merged = []\n    for batch in new_results:\n \
+          \       if isinstance(batch, list):\n            merged.extend(batch)\n        elif isinstance(batch, dict):\n            if \"search_results\" in batch:\n                merged.extend(batch[\"search_results\"])\n            elif \"title\" in batch or \"link\" in batch:\n                merged.append(batch)\n\n    filtered = []\n    for item in merged:\n        if not isinstance(item, dict): continue\n        link = item.get('link', '')\n        domain = extract_domain(link)\n        if not domain: continue\n        if is_excluded(domain): continue\n        if domain in seen_domains: continue\n        seen_domains.add(domain)\n        filtered.append(item)\n\n    return {\n        \"new_search_results\": json.dumps(filtered, ensure_ascii=False),\n        \"new_raw_count\": len(filtered)\n    }"
+        code_language: python3
+        outputs:
+          new_raw_count:
+            children: null
+            type: number
+          new_search_results:
+            children: null
+            type: string
+        selected: false
+        title: 新規結果統合1
+        type: code
+        variables:
+        - value_selector:
+          - retry1_loop
+          - output
+          value_type: array[string]
+          variable: new_results
+        - value_selector:
+          - parse_existing
+          - existing_domains
+          value_type: string
+          variable: existing_domains
+        - value_selector:
+          - '1770211566446'
+          - cleaned_companies_str
+          value_type: string
+          variable: prev_accumulated_str
+      height: 52
+      id: retry1_merge_new
+      position:
+        x: 1622
+        y: 830
+      positionAbsolute:
+        x: 1622
+        y: 830
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: retry1_cl_sys
+          role: system
+          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#start.target_count#}}件以上にしてください。**\n入力データに{{#start.target_count#}}件以上の候補がある場合、出力が{{#start.target_count#}}件未満になることは許されません。\n{{#start.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect, wantedly, openwork,\
+            \ vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#start.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
+        - id: retry1_cl_user
+          role: user
+          text: '## 検索意図
+
+            {{#code1.search_intent#}}
+
+
+            ## 検索結果（新規のみ）
+
+            {{#retry1_merge_new.new_search_results#}}
+
+
+            ## マスターシート既存ドメイン（絶対除外）
+
+            {{#parse_existing.existing_domains#}}
+
+
+            ## このセッションで取得済みのドメイン
+
+            {{#retry1_prep.existing_domains_str#}}
+
+
+            上記の「新規」検索結果のみをクレンジングしてください。
+
+            「除外すべき既存企業のドメイン」に含まれるドメインの企業は必ず除外してください。
+
+            有効な企業リストをJSON形式で出力してください。'
+        selected: false
+        title: 新規クレンジング1
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: retry1_cleanse
+      position:
+        x: 1897
+        y: 830
+      positionAbsolute:
+        x: 1897
+        y: 830
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\ndef main(llm_output: str) -> dict:\n    try:\n        text = llm_output.strip()\n        json_match = re.search(r'```(?:json)?\\s*([\\s\\S]*?)\\s*```', text)\n        if json_match:\n            text = json_match.group(1)\n        else:\n            json_match = re.search(r'\\{[\\s\\S]*\\}', text)\n            if json_match:\n                text = json_match.group(0)\n        data = json.loads(text.strip())\n        cleaned = data.get(\"cleaned_companies\", [])\n        return {\n            \"new_cleaned\": cleaned,\n            \"new_cleaned_str\": json.dumps(cleaned, ensure_ascii=False),\n            \"new_count\": len(cleaned)\n        }\n    except:\n        return {\"new_cleaned\": [], \"new_cleaned_str\": \"[]\", \"new_count\": 0}"
+        code_language: python3
+        outputs:
+          new_cleaned:
+            children: null
+            type: array[object]
+          new_cleaned_str:
+            children: null
+            type: string
+          new_count:
+            children: null
+            type: number
+        selected: false
+        title: 新規クレンジング解析1
+        type: code
+        variables:
+        - value_selector:
+          - retry1_cleanse
+          - text
+          value_type: string
+          variable: llm_output
+      height: 52
+      id: retry1_parse_cl
+      position:
+        x: 2172
+        y: 830
+      positionAbsolute:
+        x: 2172
+        y: 830
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(prev_accumulated_str: str, new_cleaned_str: str, target_count_str: str) -> dict:\n    target_count = int(target_count_str) if target_count_str else 30\n    \"\"\"前回までの確定結果 + 新規クレンジング結果をマージ（ドメイン重複排除）\"\"\"\n    prev = []\n    new = []\n\n    try:\n        prev = json.loads(prev_accumulated_str) if isinstance(prev_accumulated_str, str) else prev_accumulated_str\n        if not isinstance(prev, list):\n            prev = []\n    except:\n        prev = []\n\n    try:\n        new = json.loads(new_cleaned_str) if isinstance(new_cleaned_str, str) else new_cleaned_str\n        if not isinstance(new, list):\n            new = []\n    except:\n        new = []\n\n    # 既存のドメインと企業名を記録\n    seen_domains = set()\n    seen_names = set()\n    for c in prev:\n        d = c.get(\"domain\", \"\").strip().lower()\n        n = c.get(\"company_name\", \"\").strip()\n        if d:\n            seen_domains.add(d)\n        if n:\n            seen_names.add(n)\n\n    # 新規を追加（重複排除）\n\
+          \    merged = list(prev)\n    for c in new:\n        d = c.get(\"domain\", \"\").strip().lower()\n        n = c.get(\"company_name\", \"\").strip()\n        if d and d in seen_domains:\n            continue\n        if n and n in seen_names:\n            continue\n        if d:\n            seen_domains.add(d)\n        if n:\n            seen_names.add(n)\n        merged.append(c)\n\n    # relevance_scoreでソート\n    merged.sort(key=lambda x: x.get(\"relevance_score\", 0), reverse=True)\n\n    return {\n        \"accumulated_str\": json.dumps(merged, ensure_ascii=False),\n        \"accumulated_count\": len(merged),\n        \"is_target_met\": 1 if len(merged) >= target_count else 0\n    }"
+        code_language: python3
+        outputs:
+          accumulated_count:
+            children: null
+            type: number
+          accumulated_str:
+            children: null
+            type: string
+          is_target_met:
+            children: null
+            type: number
+        selected: false
+        title: 累積マージ1
+        type: code
+        variables:
+        - value_selector:
+          - '1770211566446'
+          - cleaned_companies_str
+          value_type: string
+          variable: prev_accumulated_str
+        - value_selector:
+          - retry1_parse_cl
+          - new_cleaned_str
+          value_type: string
+          variable: new_cleaned_str
+        - value_selector:
+          - start
+          - target_count
+          value_type: string
+          variable: target_count_str
+      height: 52
+      id: retry1_accum
+      position:
+        x: 2447
+        y: 830
+      positionAbsolute:
+        x: 2447
+        y: 830
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: '='
+            id: retry1_cond
+            value: '1'
+            varType: number
+            variable_selector:
+            - retry1_accum
+            - is_target_met
+          id: 'true'
+          logical_operator: and
+        selected: false
+        title: 件数チェック2
+        type: if-else
+      height: 124
+      id: retry1_check
+      position:
+        x: 2722
+        y: 830
+      positionAbsolute:
+        x: 2722
+        y: 830
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(accumulated_str: str, accumulated_count: int, target_count_str: str) -> dict:\n    target_count = int(target_count_str) if target_count_str else 30\n    try:\n        companies = json.loads(accumulated_str) if isinstance(accumulated_str, str) else accumulated_str\n        if not isinstance(companies, list):\n            companies = []\n        existing_names = [c.get(\"company_name\", \"\") for c in companies if c.get(\"company_name\")]\n        existing_domains = [c.get(\"domain\", \"\") for c in companies if c.get(\"domain\")]\n        needed = target_count - accumulated_count\n        return {\n            \"existing_names_str\": json.dumps(existing_names, ensure_ascii=False),\n            \"existing_domains_str\": json.dumps(existing_domains, ensure_ascii=False),\n            \"existing_count\": accumulated_count,\n            \"needed_count\": max(needed, 0)\n        }\n    except:\n        return {\n            \"existing_names_str\": \"[]\",\n\
+          \            \"existing_domains_str\": \"[]\",\n            \"existing_count\": 0,\n            \"needed_count\": target_count\n        }"
+        code_language: python3
+        outputs:
+          existing_count:
+            children: null
+            type: number
+          existing_domains_str:
+            children: null
+            type: string
+          existing_names_str:
+            children: null
+            type: string
+          needed_count:
+            children: null
+            type: number
+        selected: false
+        title: 再検索準備2
+        type: code
+        variables:
+        - value_selector:
+          - retry1_accum
+          - accumulated_str
+          value_type: string
+          variable: accumulated_str
+        - value_selector:
+          - retry1_accum
+          - accumulated_count
+          value_type: number
+          variable: accumulated_count
+        - value_selector:
+          - start
+          - target_count
+          value_type: string
+          variable: target_count_str
+      height: 52
+      id: retry2_prep
+      position:
+        x: 97
+        y: 1100
+      positionAbsolute:
+        x: 97
+        y: 1100
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: retry2_sys
+          role: system
+          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\n既存の企業リストでは{{#start.target_count#}}件に足りていません。新しい企業を見つけるための検索クエリを**20〜25個**生成してください。多いほど確実に{{#start.target_count#}}件に到達できます。\n\nこれは2回目の再検索です。**前回までとは完全に異なるアプローチ**で検索してください：\n\n**必須：以下の切り口を全て試してください**\n1. **業種の別表現**：同じ業種でも別の言い方（IT→情報通信、システム→ソフトウェア、Web→インターネット）\n2. **地域の細分化**：区単位、駅名、エリア名（渋谷、六本木、丸の内、五反田、大崎）\n3. **リスト/まとめ系**：「〇〇 企業一覧」「〇〇 おすすめ企業」「〇〇 優良企業」\n4. **業界団体**：「〇〇協会 会員企業」「〇〇連盟」\n5. **特化検索**：site:co.jp、「株式会社 〇〇 本社 東京」\n6. **関連業種**：メインの業種に近い別業種\n\n出力は必ず以下のJSON形式のみ：\n{\n  \"search_queries\": [\"クエリ1\", \"クエリ2\", ...]\n}"
+        - id: retry2_user
+          role: user
+          text: '## 元の検索キーワード
+
+            {{#start.user_input#}}
+
+
+            ## 既に取得済みの企業名リスト
+
+            {{#retry2_prep.existing_names_str#}}
+
+
+            ## 現在の取得数
+
+            {{#retry2_prep.existing_count#}}件（あと{{#retry2_prep.needed_count#}}件必要）
+
+
+            上記と重複しない新しい企業を見つけるため、これまでと異なるアプローチの検索クエリを生成してください。'
+        selected: false
+        title: 再検索クエリ生成2
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: retry2_llm
+      position:
+        x: 372
+        y: 1100
+      positionAbsolute:
+        x: 372
+        y: 1100
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\ndef main(llm_output: str) -> dict:\n    try:\n        text = llm_output.strip()\n        json_match = re.search(r'\\{[\\s\\S]*\\}', text)\n        if json_match:\n            text = json_match.group(0)\n        data = json.loads(text)\n        queries = data.get(\"search_queries\", [])\n        return {\"search_queries\": queries, \"query_count\": len(queries)}\n    except:\n        return {\"search_queries\": [llm_output], \"query_count\": 1}"
+        code_language: python3
+        outputs:
+          query_count:
+            children: null
+            type: number
+          search_queries:
+            children: null
+            type: array[string]
+        selected: false
+        title: 再検索クエリ解析2
+        type: code
+        variables:
+        - value_selector:
+          - retry2_llm
+          - text
+          value_type: string
+          variable: llm_output
+      height: 52
+      id: retry2_parse
+      position:
+        x: 647
+        y: 1100
+      positionAbsolute:
+        x: 647
+        y: 1100
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        error_handle_mode: terminated
+        flatten_output: true
+        is_parallel: false
+        iterator_input_type: array[string]
+        iterator_selector:
+        - retry2_parse
+        - search_queries
+        output_selector:
+        - retry2_format
+        - search_results
+        output_type: array[object]
+        parallel_nums: 10
+        selected: false
+        start_node_id: retry2_loop_start
+        title: 再検索ループ2
+        type: iteration
+        width: 688
+      height: 146
+      id: retry2_loop
+      position:
+        x: 922
+        y: 1100
+      positionAbsolute:
+        x: 922
+        y: 1100
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 688
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: retry2_loop_start
+      parentId: retry2_loop
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 946
+        y: 1168
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        isInLoop: false
+        is_team_authorization: false
+        iteration_id: retry2_loop
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: used for searching
+            ja_JP: used for searching
+            pt_BR: used for searching
+            zh_Hans: 用于搜索网页内容
+          label:
+            en_US: Query string
+            ja_JP: Query string
+            pt_BR: Query string
+            zh_Hans: 查询语句
+          llm_description: key words for searching
+          max: null
+          min: null
+          name: query
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          query: ''
+        plugin_id: langgenius/serper
+        plugin_unique_identifier: langgenius/serper:0.0.2@a1776aefac753acc467b304058a143b9eefa13069124e39e07d15a7091a13fd9
+        provider_icon: https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=93148327-6ca1-42fc-bf98-16d73ed2f0a2&filename=2b3892ad83c5e4dc342c060f3bd37067461728ef5e7abeeed8687e9fa7dcdc84.svg
+        provider_id: langgenius/serper/serper
+        provider_name: langgenius/serper/serper
+        provider_type: builtin
+        selected: false
+        title: Serper2
+        tool_configurations: {}
+        tool_description: A tool for performing a Google search and extracting snippets and webpages.Input should be a search query.
+        tool_label: Serper
+        tool_name: serper
+        tool_node_version: '2'
+        tool_parameters:
+          num:
+            type: mixed
+            value: '60'
+          query:
+            type: mixed
+            value: '{{#retry2_loop.item#}}'
+        type: tool
+      height: 52
+      id: retry2_serper
+      parentId: retry2_loop
+      position:
+        x: 128
+        y: 68
+      positionAbsolute:
+        x: 1050
+        y: 1168
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    - data:
+        code: "import json\n\ndef main(serper_result: str, current_query: str) -> dict:\n    results = []\n    try:\n        data = json.loads(serper_result) if isinstance(serper_result, str) else serper_result\n        if isinstance(data, list) and len(data) > 0:\n            data = data[0]\n        organic = data.get(\"organic\", [])\n        for item in organic:\n            results.append({\n                \"title\": item.get(\"title\", \"\"),\n                \"link\": item.get(\"link\", \"\"),\n                \"snippet\": item.get(\"snippet\", \"\"),\n                \"query\": current_query\n            })\n    except:\n        pass\n    return {\"search_results\": results, \"result_count\": len(results)}"
+        code_language: python3
+        isInIteration: true
+        isInLoop: false
+        iteration_id: retry2_loop
+        outputs:
+          result_count:
+            children: null
+            type: number
+          search_results:
+            children: null
+            type: array[object]
+        selected: false
+        title: 再検索結果整形2
+        type: code
+        variables:
+        - value_selector:
+          - retry2_serper
+          - json
+          value_type: string
+          variable: serper_result
+        - value_selector:
+          - retry2_loop
+          - item
+          value_type: string
+          variable: current_query
+      height: 52
+      id: retry2_format
+      parentId: retry2_loop
+      position:
+        x: 430
+        y: 68
+      positionAbsolute:
+        x: 1352
+        y: 1168
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    - data:
+        code: "import json\nimport re\n\ndef main(new_results: list, existing_domains: str, prev_accumulated_str: str) -> dict:\n    EXCLUDE_DOMAINS = [\n        'indeed.com', 'indeed.jp', 'mynavi.jp', 'rikunabi.com', 'doda.jp',\n        'en-japan.com', 'baitoru.com', 'yahoo.co.jp', 'facebook.com',\n        'twitter.com', 'x.com', 'instagram.com', 'youtube.com', 'tiktok.com',\n        'wikipedia.org', 'ja.wikipedia.org', 'google.com', 'amazon.co.jp',\n        'rakuten.co.jp', 'linkedin.com', 'bizmap.jp', 'baseconnect.in',\n        'wantedly.com', 'openwork.jp', 'vorkers.com', 'prtimes.jp',\n        'note.com', 'qiita.com', 'zenn.dev',\n        'navitime.co.jp', 'mapion.co.jp', 'ekiten.jp',\n        'hotpepper.jp', 'tabelog.com', 'gnavi.co.jp', 'retty.me',\n        'career-x.co.jp', 'type.jp', 'green-japan.com',\n        'cocomiru.com', 'hnavi.co.jp', 'rekaiz.com',\n    ]\n    EXCLUDE_SUFFIXES = ['.go.jp', '.lg.jp', '.ed.jp', '.ac.jp']\n\n    def extract_domain(url):\n        match = re.search(r'https?://([^/]+)',\
+          \ url or '')\n        return match.group(1).lower() if match else ''\n\n    def is_excluded(domain):\n        for ex in EXCLUDE_DOMAINS:\n            if ex in domain:\n                return True\n        for suffix in EXCLUDE_SUFFIXES:\n            if domain.endswith(suffix):\n                return True\n        return False\n\n    try:\n        ex_domains = json.loads(existing_domains) if isinstance(existing_domains, str) else existing_domains\n        if not isinstance(ex_domains, list): ex_domains = []\n    except:\n        ex_domains = []\n\n    try:\n        prev = json.loads(prev_accumulated_str) if isinstance(prev_accumulated_str, str) else prev_accumulated_str\n        if not isinstance(prev, list): prev = []\n    except:\n        prev = []\n\n    seen_domains = set(d.strip().lower() for d in ex_domains if d)\n    for c in prev:\n        d = c.get(\"domain\", \"\").strip().lower()\n        if d: seen_domains.add(d)\n\n    merged = []\n    for batch in new_results:\n \
+          \       if isinstance(batch, list):\n            merged.extend(batch)\n        elif isinstance(batch, dict):\n            if \"search_results\" in batch:\n                merged.extend(batch[\"search_results\"])\n            elif \"title\" in batch or \"link\" in batch:\n                merged.append(batch)\n\n    filtered = []\n    for item in merged:\n        if not isinstance(item, dict): continue\n        link = item.get('link', '')\n        domain = extract_domain(link)\n        if not domain: continue\n        if is_excluded(domain): continue\n        if domain in seen_domains: continue\n        seen_domains.add(domain)\n        filtered.append(item)\n\n    return {\n        \"new_search_results\": json.dumps(filtered, ensure_ascii=False),\n        \"new_raw_count\": len(filtered)\n    }"
+        code_language: python3
+        outputs:
+          new_raw_count:
+            children: null
+            type: number
+          new_search_results:
+            children: null
+            type: string
+        selected: false
+        title: 新規結果統合2
+        type: code
+        variables:
+        - value_selector:
+          - retry2_loop
+          - output
+          value_type: array[string]
+          variable: new_results
+        - value_selector:
+          - parse_existing
+          - existing_domains
+          value_type: string
+          variable: existing_domains
+        - value_selector:
+          - retry1_accum
+          - accumulated_str
+          value_type: string
+          variable: prev_accumulated_str
+      height: 52
+      id: retry2_merge_new
+      position:
+        x: 1622
+        y: 1100
+      positionAbsolute:
+        x: 1622
+        y: 1100
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: retry2_cl_sys
+          role: system
+          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#start.target_count#}}件以上にしてください。**\n入力データに{{#start.target_count#}}件以上の候補がある場合、出力が{{#start.target_count#}}件未満になることは許されません。\n{{#start.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect, wantedly, openwork,\
+            \ vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#start.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
+        - id: retry2_cl_user
+          role: user
+          text: '## 検索意図
+
+            {{#code1.search_intent#}}
+
+
+            ## 検索結果（新規のみ）
+
+            {{#retry2_merge_new.new_search_results#}}
+
+
+            ## マスターシート既存ドメイン（絶対除外）
+
+            {{#parse_existing.existing_domains#}}
+
+
+            ## このセッションで取得済みのドメイン
+
+            {{#retry2_prep.existing_domains_str#}}
+
+
+            上記の「新規」検索結果のみをクレンジングしてください。
+
+            「除外すべき既存企業のドメイン」に含まれるドメインの企業は必ず除外してください。
+
+            有効な企業リストをJSON形式で出力してください。'
+        selected: false
+        title: 新規クレンジング2
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: retry2_cleanse
+      position:
+        x: 1897
+        y: 1100
+      positionAbsolute:
+        x: 1897
+        y: 1100
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\ndef main(llm_output: str) -> dict:\n    try:\n        text = llm_output.strip()\n        json_match = re.search(r'```(?:json)?\\s*([\\s\\S]*?)\\s*```', text)\n        if json_match:\n            text = json_match.group(1)\n        else:\n            json_match = re.search(r'\\{[\\s\\S]*\\}', text)\n            if json_match:\n                text = json_match.group(0)\n        data = json.loads(text.strip())\n        cleaned = data.get(\"cleaned_companies\", [])\n        return {\n            \"new_cleaned\": cleaned,\n            \"new_cleaned_str\": json.dumps(cleaned, ensure_ascii=False),\n            \"new_count\": len(cleaned)\n        }\n    except:\n        return {\"new_cleaned\": [], \"new_cleaned_str\": \"[]\", \"new_count\": 0}"
+        code_language: python3
+        outputs:
+          new_cleaned:
+            children: null
+            type: array[object]
+          new_cleaned_str:
+            children: null
+            type: string
+          new_count:
+            children: null
+            type: number
+        selected: false
+        title: 新規クレンジング解析2
+        type: code
+        variables:
+        - value_selector:
+          - retry2_cleanse
+          - text
+          value_type: string
+          variable: llm_output
+      height: 52
+      id: retry2_parse_cl
+      position:
+        x: 2172
+        y: 1100
+      positionAbsolute:
+        x: 2172
+        y: 1100
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(prev_accumulated_str: str, new_cleaned_str: str, target_count_str: str) -> dict:\n    target_count = int(target_count_str) if target_count_str else 30\n    \"\"\"前回までの確定結果 + 新規クレンジング結果をマージ（ドメイン重複排除）\"\"\"\n    prev = []\n    new = []\n\n    try:\n        prev = json.loads(prev_accumulated_str) if isinstance(prev_accumulated_str, str) else prev_accumulated_str\n        if not isinstance(prev, list):\n            prev = []\n    except:\n        prev = []\n\n    try:\n        new = json.loads(new_cleaned_str) if isinstance(new_cleaned_str, str) else new_cleaned_str\n        if not isinstance(new, list):\n            new = []\n    except:\n        new = []\n\n    # 既存のドメインと企業名を記録\n    seen_domains = set()\n    seen_names = set()\n    for c in prev:\n        d = c.get(\"domain\", \"\").strip().lower()\n        n = c.get(\"company_name\", \"\").strip()\n        if d:\n            seen_domains.add(d)\n        if n:\n            seen_names.add(n)\n\n    # 新規を追加（重複排除）\n\
+          \    merged = list(prev)\n    for c in new:\n        d = c.get(\"domain\", \"\").strip().lower()\n        n = c.get(\"company_name\", \"\").strip()\n        if d and d in seen_domains:\n            continue\n        if n and n in seen_names:\n            continue\n        if d:\n            seen_domains.add(d)\n        if n:\n            seen_names.add(n)\n        merged.append(c)\n\n    # relevance_scoreでソート\n    merged.sort(key=lambda x: x.get(\"relevance_score\", 0), reverse=True)\n\n    return {\n        \"accumulated_str\": json.dumps(merged, ensure_ascii=False),\n        \"accumulated_count\": len(merged),\n        \"is_target_met\": 1 if len(merged) >= target_count else 0\n    }"
+        code_language: python3
+        outputs:
+          accumulated_count:
+            children: null
+            type: number
+          accumulated_str:
+            children: null
+            type: string
+          is_target_met:
+            children: null
+            type: number
+        selected: false
+        title: 累積マージ2
+        type: code
+        variables:
+        - value_selector:
+          - retry1_accum
+          - accumulated_str
+          value_type: string
+          variable: prev_accumulated_str
+        - value_selector:
+          - retry2_parse_cl
+          - new_cleaned_str
+          value_type: string
+          variable: new_cleaned_str
+        - value_selector:
+          - start
+          - target_count
+          value_type: string
+          variable: target_count_str
+      height: 52
+      id: retry2_accum
+      position:
+        x: 2447
+        y: 1100
+      positionAbsolute:
+        x: 2447
+        y: 1100
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: '='
+            id: retry2_cond
+            value: '1'
+            varType: number
+            variable_selector:
+            - retry2_accum
+            - is_target_met
+          id: 'true'
+          logical_operator: and
+        selected: false
+        title: 件数チェック3
+        type: if-else
+      height: 124
+      id: retry2_check
+      position:
+        x: 2722
+        y: 1100
+      positionAbsolute:
+        x: 2722
+        y: 1100
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(accumulated_str: str, accumulated_count: int, target_count_str: str) -> dict:\n    target_count = int(target_count_str) if target_count_str else 30\n    try:\n        companies = json.loads(accumulated_str) if isinstance(accumulated_str, str) else accumulated_str\n        if not isinstance(companies, list):\n            companies = []\n        existing_names = [c.get(\"company_name\", \"\") for c in companies if c.get(\"company_name\")]\n        existing_domains = [c.get(\"domain\", \"\") for c in companies if c.get(\"domain\")]\n        needed = target_count - accumulated_count\n        return {\n            \"existing_names_str\": json.dumps(existing_names, ensure_ascii=False),\n            \"existing_domains_str\": json.dumps(existing_domains, ensure_ascii=False),\n            \"existing_count\": accumulated_count,\n            \"needed_count\": max(needed, 0)\n        }\n    except:\n        return {\n            \"existing_names_str\": \"[]\",\n\
+          \            \"existing_domains_str\": \"[]\",\n            \"existing_count\": 0,\n            \"needed_count\": target_count\n        }"
+        code_language: python3
+        outputs:
+          existing_count:
+            children: null
+            type: number
+          existing_domains_str:
+            children: null
+            type: string
+          existing_names_str:
+            children: null
+            type: string
+          needed_count:
+            children: null
+            type: number
+        selected: false
+        title: 再検索準備3
+        type: code
+        variables:
+        - value_selector:
+          - retry2_accum
+          - accumulated_str
+          value_type: string
+          variable: accumulated_str
+        - value_selector:
+          - retry2_accum
+          - accumulated_count
+          value_type: number
+          variable: accumulated_count
+        - value_selector:
+          - start
+          - target_count
+          value_type: string
+          variable: target_count_str
+      height: 52
+      id: retry3_prep
+      position:
+        x: 97
+        y: 1370
+      positionAbsolute:
+        x: 97
+        y: 1370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.8
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: retry3_sys
+          role: system
+          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\n既存の企業リストでは{{#start.target_count#}}件に足りていません。新しい企業を見つけるための検索クエリを**20〜25個**生成してください。多いほど確実に{{#start.target_count#}}件に到達できます。\n\nこれは3回目の再検索です。**前回までとは完全に異なるアプローチ**で検索してください：\n\n**必須：以下の切り口を全て試してください**\n1. **業種の別表現**：同じ業種でも別の言い方（IT→情報通信、システム→ソフトウェア、Web→インターネット）\n2. **地域の細分化**：区単位、駅名、エリア名（渋谷、六本木、丸の内、五反田、大崎）\n3. **リスト/まとめ系**：「〇〇 企業一覧」「〇〇 おすすめ企業」「〇〇 優良企業」\n4. **業界団体**：「〇〇協会 会員企業」「〇〇連盟」\n5. **特化検索**：site:co.jp、「株式会社 〇〇 本社 東京」\n6. **関連業種**：メインの業種に近い別業種\n\n出力は必ず以下のJSON形式のみ：\n{\n  \"search_queries\": [\"クエリ1\", \"クエリ2\", ...]\n}"
+        - id: retry3_user
+          role: user
+          text: '## 元の検索キーワード
+
+            {{#start.user_input#}}
+
+
+            ## 既に取得済みの企業名リスト
+
+            {{#retry3_prep.existing_names_str#}}
+
+
+            ## 現在の取得数
+
+            {{#retry3_prep.existing_count#}}件（あと{{#retry3_prep.needed_count#}}件必要）
+
+
+            上記と重複しない新しい企業を見つけるため、これまでと異なるアプローチの検索クエリを生成してください。'
+        selected: false
+        title: 再検索クエリ生成3
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: retry3_llm
+      position:
+        x: 372
+        y: 1370
+      positionAbsolute:
+        x: 372
+        y: 1370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\ndef main(llm_output: str) -> dict:\n    try:\n        text = llm_output.strip()\n        json_match = re.search(r'\\{[\\s\\S]*\\}', text)\n        if json_match:\n            text = json_match.group(0)\n        data = json.loads(text)\n        queries = data.get(\"search_queries\", [])\n        return {\"search_queries\": queries, \"query_count\": len(queries)}\n    except:\n        return {\"search_queries\": [llm_output], \"query_count\": 1}"
+        code_language: python3
+        outputs:
+          query_count:
+            children: null
+            type: number
+          search_queries:
+            children: null
+            type: array[string]
+        selected: false
+        title: 再検索クエリ解析3
+        type: code
+        variables:
+        - value_selector:
+          - retry3_llm
+          - text
+          value_type: string
+          variable: llm_output
+      height: 52
+      id: retry3_parse
+      position:
+        x: 647
+        y: 1370
+      positionAbsolute:
+        x: 647
+        y: 1370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        error_handle_mode: terminated
+        flatten_output: true
+        is_parallel: false
+        iterator_input_type: array[string]
+        iterator_selector:
+        - retry3_parse
+        - search_queries
+        output_selector:
+        - retry3_format
+        - search_results
+        output_type: array[object]
+        parallel_nums: 10
+        selected: false
+        start_node_id: retry3_loop_start
+        title: 再検索ループ3
+        type: iteration
+        width: 688
+      height: 146
+      id: retry3_loop
+      position:
+        x: 922
+        y: 1370
+      positionAbsolute:
+        x: 922
+        y: 1370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 688
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: retry3_loop_start
+      parentId: retry3_loop
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 946
+        y: 1438
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        isInLoop: false
+        is_team_authorization: false
+        iteration_id: retry3_loop
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: used for searching
+            ja_JP: used for searching
+            pt_BR: used for searching
+            zh_Hans: 用于搜索网页内容
+          label:
+            en_US: Query string
+            ja_JP: Query string
+            pt_BR: Query string
+            zh_Hans: 查询语句
+          llm_description: key words for searching
+          max: null
+          min: null
+          name: query
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          query: ''
+        plugin_id: langgenius/serper
+        plugin_unique_identifier: langgenius/serper:0.0.2@a1776aefac753acc467b304058a143b9eefa13069124e39e07d15a7091a13fd9
+        provider_icon: https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=93148327-6ca1-42fc-bf98-16d73ed2f0a2&filename=2b3892ad83c5e4dc342c060f3bd37067461728ef5e7abeeed8687e9fa7dcdc84.svg
+        provider_id: langgenius/serper/serper
+        provider_name: langgenius/serper/serper
+        provider_type: builtin
+        selected: false
+        title: Serper3
+        tool_configurations: {}
+        tool_description: A tool for performing a Google search and extracting snippets and webpages.Input should be a search query.
+        tool_label: Serper
+        tool_name: serper
+        tool_node_version: '2'
+        tool_parameters:
+          num:
+            type: mixed
+            value: '60'
+          query:
+            type: mixed
+            value: '{{#retry3_loop.item#}}'
+        type: tool
+      height: 52
+      id: retry3_serper
+      parentId: retry3_loop
+      position:
+        x: 128
+        y: 68
+      positionAbsolute:
+        x: 1050
+        y: 1438
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    - data:
+        code: "import json\n\ndef main(serper_result: str, current_query: str) -> dict:\n    results = []\n    try:\n        data = json.loads(serper_result) if isinstance(serper_result, str) else serper_result\n        if isinstance(data, list) and len(data) > 0:\n            data = data[0]\n        organic = data.get(\"organic\", [])\n        for item in organic:\n            results.append({\n                \"title\": item.get(\"title\", \"\"),\n                \"link\": item.get(\"link\", \"\"),\n                \"snippet\": item.get(\"snippet\", \"\"),\n                \"query\": current_query\n            })\n    except:\n        pass\n    return {\"search_results\": results, \"result_count\": len(results)}"
+        code_language: python3
+        isInIteration: true
+        isInLoop: false
+        iteration_id: retry3_loop
+        outputs:
+          result_count:
+            children: null
+            type: number
+          search_results:
+            children: null
+            type: array[object]
+        selected: false
+        title: 再検索結果整形3
+        type: code
+        variables:
+        - value_selector:
+          - retry3_serper
+          - json
+          value_type: string
+          variable: serper_result
+        - value_selector:
+          - retry3_loop
+          - item
+          value_type: string
+          variable: current_query
+      height: 52
+      id: retry3_format
+      parentId: retry3_loop
+      position:
+        x: 430
+        y: 68
+      positionAbsolute:
+        x: 1352
+        y: 1438
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    - data:
+        code: "import json\nimport re\n\ndef main(new_results: list, existing_domains: str, prev_accumulated_str: str) -> dict:\n    EXCLUDE_DOMAINS = [\n        'indeed.com', 'indeed.jp', 'mynavi.jp', 'rikunabi.com', 'doda.jp',\n        'en-japan.com', 'baitoru.com', 'yahoo.co.jp', 'facebook.com',\n        'twitter.com', 'x.com', 'instagram.com', 'youtube.com', 'tiktok.com',\n        'wikipedia.org', 'ja.wikipedia.org', 'google.com', 'amazon.co.jp',\n        'rakuten.co.jp', 'linkedin.com', 'bizmap.jp', 'baseconnect.in',\n        'wantedly.com', 'openwork.jp', 'vorkers.com', 'prtimes.jp',\n        'note.com', 'qiita.com', 'zenn.dev',\n        'navitime.co.jp', 'mapion.co.jp', 'ekiten.jp',\n        'hotpepper.jp', 'tabelog.com', 'gnavi.co.jp', 'retty.me',\n        'career-x.co.jp', 'type.jp', 'green-japan.com',\n        'cocomiru.com', 'hnavi.co.jp', 'rekaiz.com',\n    ]\n    EXCLUDE_SUFFIXES = ['.go.jp', '.lg.jp', '.ed.jp', '.ac.jp']\n\n    def extract_domain(url):\n        match = re.search(r'https?://([^/]+)',\
+          \ url or '')\n        return match.group(1).lower() if match else ''\n\n    def is_excluded(domain):\n        for ex in EXCLUDE_DOMAINS:\n            if ex in domain:\n                return True\n        for suffix in EXCLUDE_SUFFIXES:\n            if domain.endswith(suffix):\n                return True\n        return False\n\n    try:\n        ex_domains = json.loads(existing_domains) if isinstance(existing_domains, str) else existing_domains\n        if not isinstance(ex_domains, list): ex_domains = []\n    except:\n        ex_domains = []\n\n    try:\n        prev = json.loads(prev_accumulated_str) if isinstance(prev_accumulated_str, str) else prev_accumulated_str\n        if not isinstance(prev, list): prev = []\n    except:\n        prev = []\n\n    seen_domains = set(d.strip().lower() for d in ex_domains if d)\n    for c in prev:\n        d = c.get(\"domain\", \"\").strip().lower()\n        if d: seen_domains.add(d)\n\n    merged = []\n    for batch in new_results:\n \
+          \       if isinstance(batch, list):\n            merged.extend(batch)\n        elif isinstance(batch, dict):\n            if \"search_results\" in batch:\n                merged.extend(batch[\"search_results\"])\n            elif \"title\" in batch or \"link\" in batch:\n                merged.append(batch)\n\n    filtered = []\n    for item in merged:\n        if not isinstance(item, dict): continue\n        link = item.get('link', '')\n        domain = extract_domain(link)\n        if not domain: continue\n        if is_excluded(domain): continue\n        if domain in seen_domains: continue\n        seen_domains.add(domain)\n        filtered.append(item)\n\n    return {\n        \"new_search_results\": json.dumps(filtered, ensure_ascii=False),\n        \"new_raw_count\": len(filtered)\n    }"
+        code_language: python3
+        outputs:
+          new_raw_count:
+            children: null
+            type: number
+          new_search_results:
+            children: null
+            type: string
+        selected: false
+        title: 新規結果統合3
+        type: code
+        variables:
+        - value_selector:
+          - retry3_loop
+          - output
+          value_type: array[string]
+          variable: new_results
+        - value_selector:
+          - parse_existing
+          - existing_domains
+          value_type: string
+          variable: existing_domains
+        - value_selector:
+          - retry2_accum
+          - accumulated_str
+          value_type: string
+          variable: prev_accumulated_str
+      height: 52
+      id: retry3_merge_new
+      position:
+        x: 1622
+        y: 1370
+      positionAbsolute:
+        x: 1622
+        y: 1370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: retry3_cl_sys
+          role: system
+          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#start.target_count#}}件以上にしてください。**\n入力データに{{#start.target_count#}}件以上の候補がある場合、出力が{{#start.target_count#}}件未満になることは許されません。\n{{#start.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect, wantedly, openwork,\
+            \ vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#start.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
+        - id: retry3_cl_user
+          role: user
+          text: '## 検索意図
+
+            {{#code1.search_intent#}}
+
+
+            ## 検索結果（新規のみ）
+
+            {{#retry3_merge_new.new_search_results#}}
+
+
+            ## マスターシート既存ドメイン（絶対除外）
+
+            {{#parse_existing.existing_domains#}}
+
+
+            ## このセッションで取得済みのドメイン
+
+            {{#retry3_prep.existing_domains_str#}}
+
+
+            上記の「新規」検索結果のみをクレンジングしてください。
+
+            「除外すべき既存企業のドメイン」に含まれるドメインの企業は必ず除外してください。
+
+            有効な企業リストをJSON形式で出力してください。'
+        selected: false
+        title: 新規クレンジング3
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: retry3_cleanse
+      position:
+        x: 1897
+        y: 1370
+      positionAbsolute:
+        x: 1897
+        y: 1370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\ndef main(llm_output: str) -> dict:\n    try:\n        text = llm_output.strip()\n        json_match = re.search(r'```(?:json)?\\s*([\\s\\S]*?)\\s*```', text)\n        if json_match:\n            text = json_match.group(1)\n        else:\n            json_match = re.search(r'\\{[\\s\\S]*\\}', text)\n            if json_match:\n                text = json_match.group(0)\n        data = json.loads(text.strip())\n        cleaned = data.get(\"cleaned_companies\", [])\n        return {\n            \"new_cleaned\": cleaned,\n            \"new_cleaned_str\": json.dumps(cleaned, ensure_ascii=False),\n            \"new_count\": len(cleaned)\n        }\n    except:\n        return {\"new_cleaned\": [], \"new_cleaned_str\": \"[]\", \"new_count\": 0}"
+        code_language: python3
+        outputs:
+          new_cleaned:
+            children: null
+            type: array[object]
+          new_cleaned_str:
+            children: null
+            type: string
+          new_count:
+            children: null
+            type: number
+        selected: false
+        title: 新規クレンジング解析3
+        type: code
+        variables:
+        - value_selector:
+          - retry3_cleanse
+          - text
+          value_type: string
+          variable: llm_output
+      height: 52
+      id: retry3_parse_cl
+      position:
+        x: 2172
+        y: 1370
+      positionAbsolute:
+        x: 2172
+        y: 1370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(prev_accumulated_str: str, new_cleaned_str: str, target_count_str: str) -> dict:\n    target_count = int(target_count_str) if target_count_str else 30\n    \"\"\"前回までの確定結果 + 新規クレンジング結果をマージ（ドメイン重複排除）\"\"\"\n    prev = []\n    new = []\n\n    try:\n        prev = json.loads(prev_accumulated_str) if isinstance(prev_accumulated_str, str) else prev_accumulated_str\n        if not isinstance(prev, list):\n            prev = []\n    except:\n        prev = []\n\n    try:\n        new = json.loads(new_cleaned_str) if isinstance(new_cleaned_str, str) else new_cleaned_str\n        if not isinstance(new, list):\n            new = []\n    except:\n        new = []\n\n    # 既存のドメインと企業名を記録\n    seen_domains = set()\n    seen_names = set()\n    for c in prev:\n        d = c.get(\"domain\", \"\").strip().lower()\n        n = c.get(\"company_name\", \"\").strip()\n        if d:\n            seen_domains.add(d)\n        if n:\n            seen_names.add(n)\n\n    # 新規を追加（重複排除）\n\
+          \    merged = list(prev)\n    for c in new:\n        d = c.get(\"domain\", \"\").strip().lower()\n        n = c.get(\"company_name\", \"\").strip()\n        if d and d in seen_domains:\n            continue\n        if n and n in seen_names:\n            continue\n        if d:\n            seen_domains.add(d)\n        if n:\n            seen_names.add(n)\n        merged.append(c)\n\n    # relevance_scoreでソート\n    merged.sort(key=lambda x: x.get(\"relevance_score\", 0), reverse=True)\n\n    return {\n        \"accumulated_str\": json.dumps(merged, ensure_ascii=False),\n        \"accumulated_count\": len(merged),\n        \"is_target_met\": 1 if len(merged) >= target_count else 0\n    }"
+        code_language: python3
+        outputs:
+          accumulated_count:
+            children: null
+            type: number
+          accumulated_str:
+            children: null
+            type: string
+          is_target_met:
+            children: null
+            type: number
+        selected: false
+        title: 累積マージ3
+        type: code
+        variables:
+        - value_selector:
+          - retry2_accum
+          - accumulated_str
+          value_type: string
+          variable: prev_accumulated_str
+        - value_selector:
+          - retry3_parse_cl
+          - new_cleaned_str
+          value_type: string
+          variable: new_cleaned_str
+        - value_selector:
+          - start
+          - target_count
+          value_type: string
+          variable: target_count_str
+      height: 52
+      id: retry3_accum
+      position:
+        x: 2447
+        y: 1370
+      positionAbsolute:
+        x: 2447
+        y: 1370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: '='
+            id: retry3_cond
+            value: '1'
+            varType: number
+            variable_selector:
+            - retry3_accum
+            - is_target_met
+          id: 'true'
+          logical_operator: and
+        selected: false
+        title: 件数チェック4
+        type: if-else
+      height: 124
+      id: retry3_check
+      position:
+        x: 2722
+        y: 1370
+      positionAbsolute:
+        x: 2722
+        y: 1370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: []
+          type: none
+        headers: ''
+        method: get
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 500
+        selected: false
+        ssl_verify: true
+        timeout:
+          connect: 10
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+          read: 60
+          write: 10
+        title: 既存企業取得
+        type: http-request
+        url: '{{#env.GAS_WEBHOOK_URL#}}?action=get_existing'
+        variables: []
+      height: 141
+      id: fetch_existing
+      position:
+        x: 433.10003623838327
+        y: 126.11703232915971
+      positionAbsolute:
+        x: 433.10003623838327
+        y: 126.11703232915971
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(response_body: str) -> dict:\n    try:\n        data = json.loads(response_body) if isinstance(response_body, str) else response_body\n        \n        if data.get(\"status\") == \"success\":\n            existing_data = data.get(\"data\", {})\n            names = existing_data.get(\"names\", [])\n            domains = existing_data.get(\"domains\", [])\n            \n            return {\n                \"existing_names\": json.dumps(names, ensure_ascii=False),\n                \"existing_domains\": json.dumps(domains, ensure_ascii=False),\n                \"existing_count\": len(names)\n            }\n    except:\n        pass\n    \n    return {\n        \"existing_names\": \"[]\",\n        \"existing_domains\": \"[]\",\n        \"existing_count\": 0\n    }"
+        code_language: python3
+        outputs:
+          existing_count:
+            children: null
+            type: number
+          existing_domains:
+            children: null
+            type: string
+          existing_names:
+            children: null
+            type: string
+        selected: false
+        title: 既存企業解析
+        type: code
+        variables:
+        - value_selector:
+          - fetch_existing
+          - body
+          value_type: string
+          variable: response_body
+      height: 52
+      id: parse_existing
+      position:
+        x: 19.85225002542927
+        y: 292.92256284836975
+      positionAbsolute:
+        x: 19.85225002542927
+        y: 292.92256284836975
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\ndef main(all_search_results: str, existing_domains: str, existing_names: str) -> dict:\n    EXCLUDE_DOMAINS = [\n        'indeed.com', 'indeed.jp', 'mynavi.jp', 'rikunabi.com', 'doda.jp',\n        'en-japan.com', 'baitoru.com', 'careerconnection.jp', 'hatarako.net',\n        'yahoo.co.jp', 'news.yahoo.co.jp', 'nikkei.com', 'asahi.com',\n        'yomiuri.co.jp', 'mainichi.jp', 'sankei.com',\n        'facebook.com', 'twitter.com', 'x.com', 'instagram.com',\n        'youtube.com', 'tiktok.com', 'linkedin.com',\n        'wikipedia.org', 'ja.wikipedia.org',\n        'google.com', 'amazon.co.jp', 'rakuten.co.jp',\n        'bizmap.jp', 'baseconnect.in', 'wantedly.com',\n        'vorkers.com', 'openwork.jp',\n        'navitime.co.jp', 'mapion.co.jp', 'mapfan.com', 'ekiten.jp',\n        'hotpepper.jp', 'tabelog.com', 'gnavi.co.jp', 'retty.me',\n        'career-x.co.jp', 'type.jp', 'green-japan.com',\n        'note.com', 'qiita.com', 'zenn.dev', 'hateblo.jp',\
+          \ 'ameblo.jp',\n        'prtimes.jp', 'atpress.ne.jp',\n        'cocomiru.com', 'hnavi.co.jp', 'rekaiz.com',\n    ]\n    EXCLUDE_SUFFIXES = ['.go.jp', '.lg.jp', '.ed.jp', '.ac.jp']\n\n    try:\n        results = json.loads(all_search_results) if isinstance(all_search_results, str) else all_search_results\n        if not isinstance(results, list): results = []\n    except:\n        results = []\n\n    try:\n        ex_domains = json.loads(existing_domains) if isinstance(existing_domains, str) else existing_domains\n        if not isinstance(ex_domains, list): ex_domains = []\n    except:\n        ex_domains = []\n\n    try:\n        ex_names = json.loads(existing_names) if isinstance(existing_names, str) else existing_names\n        if not isinstance(ex_names, list): ex_names = []\n    except:\n        ex_names = []\n\n    ex_domains_set = set(d.strip().lower() for d in ex_domains if d)\n    ex_names_set = set(n.strip().lower() for n in ex_names if n)\n\n    def extract_domain(url):\n\
+          \        match = re.search(r'https?://([^/]+)', url or '')\n        return match.group(1).lower() if match else ''\n\n    def is_excluded(domain):\n        for ex in EXCLUDE_DOMAINS:\n            if ex in domain:\n                return True\n        for suffix in EXCLUDE_SUFFIXES:\n            if domain.endswith(suffix):\n                return True\n        return False\n\n    seen_domains = set()\n    filtered = []\n    for item in results:\n        if not isinstance(item, dict): continue\n        link = item.get('link', '')\n        title = item.get('title', '')\n        domain = extract_domain(link)\n        if not domain or not link: continue\n        if is_excluded(domain): continue\n        if domain in ex_domains_set: continue\n        if domain in seen_domains: continue\n        title_lower = title.lower()\n        skip = False\n        for name in ex_names_set:\n            if name and len(name) > 2 and name in title_lower:\n                skip = True\n            \
+          \    break\n        if skip: continue\n        seen_domains.add(domain)\n        filtered.append(item)\n\n    return {\n        \"filtered_results\": json.dumps(filtered, ensure_ascii=False),\n        \"filtered_count\": len(filtered)\n    }"
+        code_language: python3
+        outputs:
+          filtered_count:
+            children: null
+            type: number
+          filtered_results:
+            children: null
+            type: string
+        selected: false
+        title: 事前フィルタリング
+        type: code
+        variables:
+        - value_selector:
+          - '1770211282471'
+          - all_search_results
+          value_type: string
+          variable: all_search_results
+        - value_selector:
+          - parse_existing
+          - existing_domains
+          value_type: string
+          variable: existing_domains
+        - value_selector:
+          - parse_existing
+          - existing_names
+          value_type: string
+          variable: existing_names
+      height: 52
+      id: pre_filter
+      position:
+        x: 1897
+        y: 292.92256284836975
+      positionAbsolute:
+        x: 1897
+        y: 292.92256284836975
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - id: kv-gas-basic
+            key: ''
+            type: text
+            value: '{{#1770211748512.gas_basic_request_json#}}'
+          type: json
+        headers: Content-Type:application/json
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 0
+          retry_enabled: false
+          retry_interval: 100
+        selected: false
+        ssl_verify: true
+        timeout:
+          connect: 10
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+          read: 60
+          write: 10
+        title: GAS基本保存
+        type: http-request
+        url: '{{#env.GAS_WEBHOOK_URL#}}'
+        variables: []
+      height: 96
+      id: gas_save_http
+      position:
+        x: 955.0
+        y: 587.0
+      positionAbsolute:
+        x: 955.0
+        y: 587.0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(gas_response: str, user_input: str) -> dict:\n    try:\n        data = json.loads(gas_response) if isinstance(gas_response, str) else gas_response\n\n        if data.get(\"status\") != \"success\":\n            return {\n                \"start_row\": 0,\n                \"scrape_request_json\": json.dumps({\"companies\": []}, ensure_ascii=False),\n                \"saved_count\": 0,\n                \"error_message\": data.get(\"message\", \"GAS保存エラー\")\n            }\n\n        companies = data.get(\"companies\", [])\n        start_row = data.get(\"startRow\", 0)\n        saved_count = data.get(\"savedCount\", 0)\n\n        # Python API用リクエスト\n        scrape_request_json = json.dumps({\n            \"companies\": companies\n        }, ensure_ascii=False)\n\n        return {\n            \"start_row\": start_row,\n            \"scrape_request_json\": scrape_request_json,\n            \"saved_count\": saved_count,\n            \"search_keyword\": data.get(\"\
+          search_keyword\", user_input),\n            \"error_message\": \"\"\n        }\n    except Exception as e:\n        return {\n            \"start_row\": 0,\n            \"scrape_request_json\": json.dumps({\"companies\": []}, ensure_ascii=False),\n            \"saved_count\": 0,\n            \"error_message\": str(e)\n        }"
+        code_language: python3
+        outputs:
+          start_row:
+            children: null
+            type: number
+          scrape_request_json:
+            children: null
+            type: string
+          saved_count:
+            children: null
+            type: number
+          search_keyword:
+            children: null
+            type: string
+          error_message:
+            children: null
+            type: string
+        selected: false
+        title: GAS保存結果解析
+        type: code
+        variables:
+        - value_selector:
+          - gas_save_http
+          - body
+          value_type: string
+          variable: gas_response
+        - value_selector:
+          - start
+          - user_input
+          value_type: string
+          variable: user_input
+      height: 52
+      id: gas_save_parse
+      position:
+        x: 1230.0
+        y: 587.0
+      positionAbsolute:
+        x: 1230.0
+        y: 587.0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - id: kv-scrape
+            key: ''
+            type: text
+            value: '{{#gas_save_parse.scrape_request_json#}}'
+          type: json
+        headers: Content-Type:application/json
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 0
+          retry_enabled: false
+          retry_interval: 100
+        selected: false
+        ssl_verify: true
+        timeout:
+          connect: 10
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+          read: 600
+          write: 10
+        title: Pythonスクレイピング
+        type: http-request
+        url: '{{#env.PYTHON_API_URL#}}/scrape'
+        variables: []
+      height: 96
+      id: python_scrape_http
+      position:
+        x: 1505.0
+        y: 587.0
+      positionAbsolute:
+        x: 1505.0
+        y: 587.0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(scrape_response: str, start_row: int, search_keyword: str) -> dict:\n    try:\n        data = json.loads(scrape_response) if isinstance(scrape_response, str) else scrape_response\n\n        results = data.get(\"results\", [])\n\n        # GAS update_scraped用リクエスト\n        gas_update_request_json = json.dumps({\n            \"action\": \"update_scraped\",\n            \"results\": results,\n            \"start_row\": start_row,\n            \"search_keyword\": search_keyword\n        }, ensure_ascii=False)\n\n        return {\n            \"gas_update_request_json\": gas_update_request_json,\n            \"scraped_results_json\": json.dumps(results, ensure_ascii=False),\n            \"scraped_count\": len(results),\n            \"success_count\": data.get(\"success_count\", 0)\n        }\n    except Exception as e:\n        return {\n            \"gas_update_request_json\": json.dumps({\"action\": \"update_scraped\", \"results\": [], \"start_row\": start_row,\
+          \ \"search_keyword\": search_keyword}, ensure_ascii=False),\n            \"scraped_results_json\": \"[]\",\n            \"scraped_count\": 0,\n            \"success_count\": 0\n        }"
+        code_language: python3
+        outputs:
+          gas_update_request_json:
+            children: null
+            type: string
+          scraped_results_json:
+            children: null
+            type: string
+          scraped_count:
+            children: null
+            type: number
+          success_count:
+            children: null
+            type: number
+        selected: false
+        title: スクレイピング結果解析
+        type: code
+        variables:
+        - value_selector:
+          - python_scrape_http
+          - body
+          value_type: string
+          variable: scrape_response
+        - value_selector:
+          - gas_save_parse
+          - start_row
+          value_type: number
+          variable: start_row
+        - value_selector:
+          - gas_save_parse
+          - search_keyword
+          value_type: string
+          variable: search_keyword
+      height: 52
+      id: scrape_parse
+      position:
+        x: 1780.0
+        y: 587.0
+      positionAbsolute:
+        x: 1780.0
+        y: 587.0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - id: kv-gas-update
+            key: ''
+            type: text
+            value: '{{#scrape_parse.gas_update_request_json#}}'
+          type: json
+        headers: Content-Type:application/json
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 0
+          retry_enabled: false
+          retry_interval: 100
+        selected: false
+        ssl_verify: true
+        timeout:
+          connect: 10
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+          read: 60
+          write: 10
+        title: GASシート更新
+        type: http-request
+        url: '{{#env.GAS_WEBHOOK_URL#}}'
+        variables: []
+      height: 96
+      id: gas_update_http
+      position:
+        x: 2055.0
+        y: 587.0
+      positionAbsolute:
+        x: 2055.0
+        y: 587.0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\nfrom datetime import datetime\n\ndef main(scrape_results_json: str, gas_update_response: str, user_input: str) -> dict:\n    try:\n        results = json.loads(scrape_results_json) if isinstance(scrape_results_json, str) else scrape_results_json\n        if not isinstance(results, list):\n            results = []\n\n        # GAS更新レスポンスからスプレッドシートURL取得\n        gas_data = {}\n        try:\n            gas_data = json.loads(gas_update_response) if isinstance(gas_update_response, str) else gas_update_response\n        except:\n            pass\n        spreadsheet_url = gas_data.get(\"spreadsheetUrl\", \"\")\n\n        formatted = []\n        for company in results:\n            url = company.get(\"base_url\", \"\")\n            domain = \"\"\n            if url:\n                match = re.search(r'https?://([^/]+)', url)\n                if match:\n                    domain = match.group(1)\n\n            formatted.append({\n                \"company_name\"\
+          : company.get(\"company_name\", \"\"),\n                \"base_url\": company.get(\"base_url\", \"\"),\n                \"contact_url\": company.get(\"contact_url\", \"\"),\n                \"phone\": company.get(\"phone\", \"\"),\n                \"domain\": domain,\n                \"search_keyword\": user_input,\n                \"created_date\": datetime.now().strftime(\"%Y-%m-%d\")\n            })\n\n        return {\n            \"scraped_data\": formatted,\n            \"scraped_json\": json.dumps(formatted, ensure_ascii=False),\n            \"scraped_count\": len(formatted),\n            \"spreadsheet_url\": spreadsheet_url\n        }\n    except Exception as e:\n        return {\n            \"scraped_data\": [],\n            \"scraped_json\": \"[]\",\n            \"scraped_count\": 0,\n            \"spreadsheet_url\": \"\"\n        }"
+        code_language: python3
+        outputs:
+          scraped_count:
+            children: null
+            type: number
+          scraped_data:
+            children: null
+            type: array[object]
+          scraped_json:
+            children: null
+            type: string
+          spreadsheet_url:
+            children: null
+            type: string
+        selected: false
+        title: 最終整形
+        type: code
+        variables:
+        - value_selector:
+          - scrape_parse
+          - scraped_results_json
+          value_type: string
+          variable: scrape_results_json
+        - value_selector:
+          - gas_update_http
+          - body
+          value_type: string
+          variable: gas_update_response
+        - value_selector:
+          - start
+          - user_input
+          value_type: string
+          variable: user_input
+      height: 52
+      id: final_format
+      position:
+        x: 2330.0
+        y: 587.0
+      positionAbsolute:
+        x: 2330.0
+        y: 587.0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: -79.38821417198142
+      y: 224.24428291786833
+      zoom: 0.38630604597688295
+  rag_pipeline_variables: []
