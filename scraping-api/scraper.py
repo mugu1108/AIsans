@@ -52,7 +52,13 @@ EXCLUDE_DOMAINS = [
     'best100.v-tsushin.jp', 'isms.jp', 'itnabi.com',
     'appstars.io', 'ikesai.com', 'rekaizen.com', 'careerforum.net',
     'startupclass.co.jp', 'herp.careers', 'readycrew.jp', 'ai-taiwan.com.tw',
-    'utilly.ne.jp', 'hatarakigai.info', 'officenomikata.jp', 'cheercareer.jp'
+    'utilly.ne.jp', 'hatarakigai.info', 'officenomikata.jp', 'cheercareer.jp',
+    # 追加: まとめ・ランキングサイト
+    'mersenne.jp', '3utsu.com', 'fallabs.com', 'boxil.jp', 'itreview.jp',
+    '発注ナビ.jp', 'ferret-plus.com', 'liskul.com', 'webtan.impress.co.jp',
+    'seleck.cc', 'leverages.jp', 'aippear.net', 'techcrunch.com',
+    'bridge-salon.jp', 'it-trend.jp', 'aspic.or.jp', 'meetsmore.com',
+    'proengineer.internous.co.jp', 'crowdworks.jp', 'lancers.jp',
 ]
 
 # お問い合わせURL検索キーワード

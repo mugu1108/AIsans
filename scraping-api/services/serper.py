@@ -14,15 +14,23 @@ from models.search import CompanyData
 logger = logging.getLogger(__name__)
 
 
-# クエリ生成パターン
+# クエリ生成パターン（企業公式サイトを見つけやすいクエリ）
 QUERY_PATTERNS = [
-    "{keyword} 企業一覧",
-    "{keyword} 会社",
+    "{keyword} 株式会社 公式",
     "{keyword} 株式会社",
-    "{keyword} ランキング",
-    "{keyword} おすすめ",
-    "{keyword} 比較",
-    "{keyword} co.jp",
+    "{keyword} 会社概要",
+    "{keyword} お問い合わせ",
+    "{keyword} 採用情報",
+    "{keyword} site:co.jp",
+    "{keyword} 有限会社",
+    "{keyword} 合同会社",
+]
+
+# 除外タイトルパターン（まとめ記事、ランキング記事等を除外）
+EXCLUDE_TITLE_PATTERNS = [
+    "ランキング", "一覧", "比較", "おすすめ", "選び方", "まとめ",
+    "厳選", "徹底比較", "口コミ", "評判", "人気", "top", "best",
+    "選", "社を紹介", "社まとめ", "件を紹介",
 ]
 
 # 除外ドメイン（scraper.pyと共通）
@@ -57,7 +65,13 @@ EXCLUDE_DOMAINS = [
     'best100.v-tsushin.jp', 'isms.jp', 'itnabi.com',
     'appstars.io', 'ikesai.com', 'rekaizen.com', 'careerforum.net',
     'startupclass.co.jp', 'herp.careers', 'readycrew.jp', 'ai-taiwan.com.tw',
-    'utilly.ne.jp', 'hatarakigai.info', 'officenomikata.jp', 'cheercareer.jp'
+    'utilly.ne.jp', 'hatarakigai.info', 'officenomikata.jp', 'cheercareer.jp',
+    # 追加: まとめ・ランキングサイト
+    'mersenne.jp', '3utsu.com', 'fallabs.com', 'boxil.jp', 'itreview.jp',
+    '発注ナビ.jp', 'ferret-plus.com', 'liskul.com', 'webtan.impress.co.jp',
+    'seleck.cc', 'leverages.jp', 'aippear.net', 'techcrunch.com',
+    'bridge-salon.jp', 'it-trend.jp', 'aspic.or.jp', 'meetsmore.com',
+    'proengineer.internous.co.jp', 'crowdworks.jp', 'lancers.jp',
 ]
 
 
@@ -90,6 +104,12 @@ def is_excluded_domain(domain: str) -> bool:
     """除外ドメインかチェック"""
     domain_lower = domain.lower()
     return any(excluded in domain_lower for excluded in EXCLUDE_DOMAINS)
+
+
+def is_excluded_title(title: str) -> bool:
+    """除外すべきタイトル（まとめ記事等）かチェック"""
+    title_lower = title.lower()
+    return any(pattern in title_lower for pattern in EXCLUDE_TITLE_PATTERNS)
 
 
 class SerperClient:
@@ -202,6 +222,7 @@ class SerperClient:
                         break
 
                     url = result.get("link", "")
+                    title = result.get("title", "")
                     if not url:
                         continue
 
@@ -211,13 +232,18 @@ class SerperClient:
                     if is_excluded_domain(domain):
                         continue
 
+                    # 除外タイトルチェック（まとめ記事等をスキップ）
+                    if is_excluded_title(title):
+                        logger.debug(f"タイトル除外: {title}")
+                        continue
+
                     # 重複チェック
                     if domain in found_domains:
                         continue
 
                     found_domains.add(domain)
                     companies.append(CompanyData(
-                        company_name=result.get("title", ""),
+                        company_name=title,
                         url=url,
                         domain=domain,
                         snippet=result.get("snippet", ""),
