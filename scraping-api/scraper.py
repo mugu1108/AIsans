@@ -5,12 +5,15 @@ GASコードからの移植 + 企業名一致チェック機能
 
 import re
 import asyncio
+import logging
 from urllib.parse import urljoin, urlparse
 from dataclasses import dataclass
 from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 
 # ====================================
@@ -65,7 +68,17 @@ COMMON_CONTACT_PATHS = [
     'contact',
     'inquiry/',
     'contact.html',
-    'toiawase/'
+    'toiawase/',
+    'otoiawase/',
+    'form/',
+    'contact-us/',
+    'contactus/',
+    'mail/',
+    'support/',
+    'info/',
+    'ask/',
+    'inquiry.html',
+    'contact/index.html',
 ]
 
 # 法人格除去パターン（企業名正規化用）
@@ -210,6 +223,26 @@ def check_company_match(company_name: str, html: str) -> bool:
     # og（2文字以上）が name に含まれている
     if len(og_site_name) >= 2 and og_site_name in normalized_name:
         return True
+
+    # ヘッダー・フッター・会社概要セクションから企業名を検索
+    # これにより、タイトルに企業名がなくても本文にあれば一致とみなす
+    for selector in ['header', 'footer', '.company', '#company', '.about', '#about', '.corp', '#corp']:
+        elements = soup.select(selector)
+        for elem in elements:
+            elem_text = normalize_company_name(elem.get_text())
+            if normalized_name in elem_text:
+                return True
+
+    # 企業名の主要部分（3文字以上）がページ全体に含まれているかチェック
+    if len(normalized_name) >= 3:
+        # ページ全体のテキストを取得（スクリプト・スタイル除去）
+        for script in soup(['script', 'style', 'noscript']):
+            script.decompose()
+        body_text = normalize_company_name(soup.get_text())
+
+        # 企業名がページ本文に含まれている場合
+        if normalized_name in body_text:
+            return True
 
     return False
 
@@ -383,9 +416,14 @@ async def fetch_with_retry(
             )
             if response.status_code == 200:
                 return response.text
-        except Exception:
-            if attempt < max_retries:
-                await asyncio.sleep(0.3)
+            else:
+                logger.debug(f"HTTP {response.status_code}: {url}")
+        except httpx.TimeoutException:
+            logger.debug(f"タイムアウト: {url}")
+        except Exception as e:
+            logger.debug(f"HTTP取得エラー: {url} - {type(e).__name__}")
+        if attempt < max_retries:
+            await asyncio.sleep(0.3)
     return None
 
 
@@ -420,10 +458,13 @@ async def scrape_company(
     phone = ''
     error = ''
 
+    logger.debug(f"スクレイピング開始: {company_name} ({base_url})")
+
     # STEP 1: トップページ取得
     top_page_html = await fetch_with_retry(client, base_url, max_retries=1)
 
     if not top_page_html:
+        logger.warning(f"トップページ取得失敗: {company_name} ({base_url})")
         return ScrapeResult(
             company_name=company_name,
             base_url=base_url,
@@ -435,6 +476,7 @@ async def scrape_company(
 
     # STEP 2: 企業名一致チェック
     if not check_company_match(company_name, top_page_html):
+        logger.warning(f"企業名不一致: {company_name} ({base_url})")
         return ScrapeResult(
             company_name=company_name,
             base_url=base_url,
@@ -470,7 +512,7 @@ async def scrape_company(
                 if phone:
                     break
 
-    return ScrapeResult(
+    result = ScrapeResult(
         company_name=company_name,
         base_url=base_url,
         contact_url=contact_url,
@@ -478,6 +520,13 @@ async def scrape_company(
         domain=domain,
         error=error
     )
+
+    if contact_url or phone:
+        logger.info(f"スクレイピング成功: {company_name} (contact: {bool(contact_url)}, phone: {bool(phone)})")
+    else:
+        logger.warning(f"連絡先未検出: {company_name} ({base_url})")
+
+    return result
 
 
 # ====================================
@@ -517,4 +566,14 @@ async def scrape_companies(
         ]
         results = await asyncio.gather(*tasks)
 
-    return list(results)
+    # スクレイピング結果のサマリーをログ出力
+    results_list = list(results)
+    total = len(results_list)
+    success = sum(1 for r in results_list if r.contact_url or r.phone)
+    top_failed = sum(1 for r in results_list if r.error == 'top_page_failed')
+    mismatch = sum(1 for r in results_list if r.error == 'company_mismatch')
+    no_contact = sum(1 for r in results_list if not r.error and not r.contact_url and not r.phone)
+
+    logger.info(f"スクレイピング結果サマリー: 総数={total}, 成功={success}, トップページ失敗={top_failed}, 企業名不一致={mismatch}, 連絡先未検出={no_contact}")
+
+    return results_list

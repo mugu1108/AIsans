@@ -85,11 +85,27 @@ class SearchWorkflow:
             logger.info(f"スクレイピング完了: {len(scraped_results)}件")
 
             # 成功した結果をフィルタ
+            # - エラーがない企業はすべて含める（連絡先がなくても営業担当者が手動で探せる）
+            # - top_page_failed と company_mismatch はサイトにアクセスできないか別の企業なので除外
             successful_results = [
                 r for r in scraped_results
-                if r.contact_url or r.phone
+                if not r.error  # エラーなし = 正しい企業サイトにアクセス成功
             ]
-            logger.info(f"有効な結果: {len(successful_results)}件")
+
+            # 結果を連絡先ありを先に、なしを後にソート
+            successful_results.sort(key=lambda r: (0 if r.contact_url or r.phone else 1))
+
+            # フィルタ結果の詳細ログ
+            with_contact = sum(1 for r in successful_results if r.contact_url or r.phone)
+            without_contact = len(successful_results) - with_contact
+            failed_count = len(scraped_results) - len(successful_results)
+
+            logger.info(f"有効な結果: {len(successful_results)}件（連絡先あり: {with_contact}件、連絡先なし: {without_contact}件）")
+            if failed_count > 0:
+                # 失敗した企業の内訳
+                top_failed = sum(1 for r in scraped_results if r.error == 'top_page_failed')
+                mismatch = sum(1 for r in scraped_results if r.error == 'company_mismatch')
+                logger.info(f"除外: {failed_count}件（アクセス失敗: {top_failed}件、企業名不一致: {mismatch}件）")
 
             # ステップ4: GAS保存
             job.update_status(JobStatus.SAVING, "スプレッドシートに保存中...", 80)
@@ -122,13 +138,15 @@ class SearchWorkflow:
             )
             self.job_manager.update_job(job)
 
-            # 完了通知
+            # 完了通知（連絡先ありの件数も渡す）
+            contact_count = sum(1 for r in successful_results if r.contact_url or r.phone)
             await self.slack.notify_completion(
                 job.slack_channel_id,
                 job.slack_thread_ts,
                 job.search_keyword,
                 len(successful_results),
                 spreadsheet_url,
+                contact_count=contact_count,
             )
 
             # CSVファイルを生成してSlackにアップロード

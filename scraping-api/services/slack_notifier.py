@@ -103,6 +103,7 @@ class SlackNotifier:
         search_keyword: str,
         result_count: int,
         spreadsheet_url: Optional[str] = None,
+        contact_count: Optional[int] = None,
     ) -> bool:
         """
         完了通知を送信
@@ -113,11 +114,17 @@ class SlackNotifier:
             search_keyword: 検索キーワード
             result_count: 結果件数
             spreadsheet_url: スプレッドシートURL
+            contact_count: 連絡先ありの件数
         """
         # メッセージを構築
-        message_lines = [
-            f":white_check_mark: 完了しました！{result_count}社のリストを作成しました"
-        ]
+        if contact_count is not None and contact_count < result_count:
+            message_lines = [
+                f":white_check_mark: 完了しました！{result_count}社のリストを作成しました（連絡先あり: {contact_count}社）"
+            ]
+        else:
+            message_lines = [
+                f":white_check_mark: 完了しました！{result_count}社のリストを作成しました"
+            ]
 
         if spreadsheet_url:
             message_lines.append("")
