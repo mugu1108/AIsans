@@ -15,13 +15,16 @@ logger = logging.getLogger(__name__)
 
 
 # クエリ生成パターン（企業公式サイトを見つけやすいクエリ）
+# site:co.jp を多用して企業ドメインに絞る
 QUERY_PATTERNS = [
-    "{keyword} 株式会社 公式",
-    "{keyword} 株式会社",
-    "{keyword} 会社概要",
-    "{keyword} お問い合わせ",
-    "{keyword} 採用情報",
     "{keyword} site:co.jp",
+    "{keyword} 株式会社 site:co.jp",
+    "{keyword} 会社概要 site:co.jp",
+    "{keyword} 事業内容 site:co.jp",
+    "{keyword} 企業情報 site:co.jp",
+    "{keyword} site:or.jp",
+    "{keyword} site:ne.jp",
+    "{keyword} 株式会社",
     "{keyword} 有限会社",
     "{keyword} 合同会社",
 ]
@@ -30,7 +33,8 @@ QUERY_PATTERNS = [
 EXCLUDE_TITLE_PATTERNS = [
     "ランキング", "一覧", "比較", "おすすめ", "選び方", "まとめ",
     "厳選", "徹底比較", "口コミ", "評判", "人気", "top", "best",
-    "選", "社を紹介", "社まとめ", "件を紹介",
+    "選", "社を紹介", "社まとめ", "件を紹介", "企業を紹介",
+    "転職", "求人", "採用情報", "年収", "就職", "インターン",
 ]
 
 # 除外ドメイン（scraper.pyと共通）
@@ -176,7 +180,7 @@ class SerperClient:
         queries: list[str],
         target_count: int,
         existing_domains: Optional[set[str]] = None,
-        max_pages_per_query: int = 3,
+        max_pages_per_query: int = 5,
     ) -> list[CompanyData]:
         """
         複数クエリで企業を検索し、重複除去して返す
@@ -217,6 +221,11 @@ class SerperClient:
                     logger.debug(f"結果なし: {query} (page={page})")
                     break
 
+                skipped_domain = 0
+                skipped_title = 0
+                skipped_dup = 0
+                added = 0
+
                 for result in results:
                     if len(companies) >= target_count:
                         break
@@ -230,15 +239,17 @@ class SerperClient:
 
                     # 除外ドメインチェック
                     if is_excluded_domain(domain):
+                        skipped_domain += 1
                         continue
 
                     # 除外タイトルチェック（まとめ記事等をスキップ）
                     if is_excluded_title(title):
-                        logger.debug(f"タイトル除外: {title}")
+                        skipped_title += 1
                         continue
 
                     # 重複チェック
                     if domain in found_domains:
+                        skipped_dup += 1
                         continue
 
                     found_domains.add(domain)
@@ -248,6 +259,10 @@ class SerperClient:
                         domain=domain,
                         snippet=result.get("snippet", ""),
                     ))
+                    added += 1
+
+                if skipped_domain or skipped_title:
+                    logger.debug(f"  スキップ: ドメイン除外={skipped_domain}, タイトル除外={skipped_title}, 重複={skipped_dup}, 追加={added}")
 
                 logger.info(f"検索完了: {query} (page={page+1}) - 現在{len(companies)}件")
 
