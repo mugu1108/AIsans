@@ -15,18 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 # クエリ生成パターン（企業公式サイトを見つけやすいクエリ）
-# site:co.jp を多用して企業ドメインに絞る
+# シンプルなクエリで企業サイトを検索
 QUERY_PATTERNS = [
-    "{keyword} site:co.jp",
-    "{keyword} 株式会社 site:co.jp",
-    "{keyword} 会社概要 site:co.jp",
-    "{keyword} 事業内容 site:co.jp",
-    "{keyword} 企業情報 site:co.jp",
-    "{keyword} site:or.jp",
-    "{keyword} site:ne.jp",
     "{keyword} 株式会社",
     "{keyword} 有限会社",
     "{keyword} 合同会社",
+    "{keyword} site:co.jp",
+    "{keyword} site:or.jp",
 ]
 
 # 除外タイトルパターン（まとめ記事、ランキング記事等を除外）

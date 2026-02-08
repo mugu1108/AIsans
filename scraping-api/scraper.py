@@ -194,38 +194,74 @@ def extract_company_name_from_html(html: str, fallback_name: str) -> str:
     優先順位:
     1. og:site_name
     2. titleタグ（不要な部分を除去）
-    3. フォールバック名
+    3. フォールバック名（クリーンアップ済み）
     """
     soup = BeautifulSoup(html, 'lxml')
+
+    # 無効な名前パターン
+    invalid_names = [
+        'トップページ', 'TOP', 'Home', 'ホーム', 'index',
+        '会社案内', '会社概要', '企業情報', '事業内容', '企業概要',
+        'コーポレートサイト', '公式サイト', '公式ホームページ',
+        'Official Site', 'Corporate Site', 'Welcome',
+    ]
+
+    def is_valid_name(name: str) -> bool:
+        if not name or len(name) < 2:
+            return False
+        name_lower = name.lower().strip()
+        for invalid in invalid_names:
+            if name_lower == invalid.lower():
+                return False
+        return True
+
+    def clean_title(title: str) -> str:
+        """タイトルから企業名を抽出"""
+        # 区切り文字で分割
+        separators = ['｜', '|', ' - ', '－', '―', '–', '::']
+        parts = [title]
+        for sep in separators:
+            new_parts = []
+            for part in parts:
+                new_parts.extend(part.split(sep))
+            parts = new_parts
+
+        # 各パートをクリーンアップ
+        cleaned_parts = []
+        for part in parts:
+            part = part.strip()
+            # 無効な名前でなければ追加
+            if is_valid_name(part):
+                cleaned_parts.append(part)
+
+        if cleaned_parts:
+            # 株式会社、有限会社、合同会社を含むパートを優先
+            for part in cleaned_parts:
+                if '株式会社' in part or '有限会社' in part or '合同会社' in part:
+                    return part
+            # なければ最初の有効なパートを返す
+            return cleaned_parts[0]
+        return title.strip()
 
     # og:site_name を優先
     og_tag = soup.find('meta', property='og:site_name')
     if og_tag and og_tag.get('content'):
         name = og_tag['content'].strip()
-        if len(name) >= 2 and name not in ['トップページ', 'TOP', 'Home']:
+        if is_valid_name(name):
             return name
 
     # titleタグから抽出
     title_tag = soup.find('title')
     if title_tag:
         title = title_tag.get_text().strip()
-        # 不要な部分を除去
-        remove_patterns = [
-            '| ', ' | ', '｜', ' - ', '－',
-            'トップページ', 'TOP', 'Home', 'ホーム',
-            '会社案内', '会社概要', '企業情報', '事業内容',
-            'コーポレートサイト', '公式サイト', '公式ホームページ',
-            'Official Site', 'Corporate Site',
-        ]
-        cleaned = title
-        for pattern in remove_patterns:
-            if pattern in cleaned:
-                parts = cleaned.split(pattern)
-                # 最も長い部分を企業名として採用
-                cleaned = max(parts, key=len).strip()
-
-        if len(cleaned) >= 2:
+        cleaned = clean_title(title)
+        if is_valid_name(cleaned):
             return cleaned
+
+    # フォールバック名もクリーンアップ
+    cleaned_fallback = clean_title(fallback_name)
+    if is_valid_name(cleaned_fallback):
+        return cleaned_fallback
 
     return fallback_name
 
