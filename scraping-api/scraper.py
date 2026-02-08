@@ -187,6 +187,49 @@ def normalize_company_name(name: str) -> str:
     return normalized.strip()
 
 
+def extract_company_name_from_html(html: str, fallback_name: str) -> str:
+    """
+    HTMLから企業名を抽出
+
+    優先順位:
+    1. og:site_name
+    2. titleタグ（不要な部分を除去）
+    3. フォールバック名
+    """
+    soup = BeautifulSoup(html, 'lxml')
+
+    # og:site_name を優先
+    og_tag = soup.find('meta', property='og:site_name')
+    if og_tag and og_tag.get('content'):
+        name = og_tag['content'].strip()
+        if len(name) >= 2 and name not in ['トップページ', 'TOP', 'Home']:
+            return name
+
+    # titleタグから抽出
+    title_tag = soup.find('title')
+    if title_tag:
+        title = title_tag.get_text().strip()
+        # 不要な部分を除去
+        remove_patterns = [
+            '| ', ' | ', '｜', ' - ', '－',
+            'トップページ', 'TOP', 'Home', 'ホーム',
+            '会社案内', '会社概要', '企業情報', '事業内容',
+            'コーポレートサイト', '公式サイト', '公式ホームページ',
+            'Official Site', 'Corporate Site',
+        ]
+        cleaned = title
+        for pattern in remove_patterns:
+            if pattern in cleaned:
+                parts = cleaned.split(pattern)
+                # 最も長い部分を企業名として採用
+                cleaned = max(parts, key=len).strip()
+
+        if len(cleaned) >= 2:
+            return cleaned
+
+    return fallback_name
+
+
 def check_company_match(company_name: str, html: str) -> bool:
     """
     企業名とページ内容の一致をチェック
@@ -480,17 +523,11 @@ async def scrape_company(
             error='top_page_failed'
         )
 
-    # STEP 2: 企業名一致チェック
-    if not check_company_match(company_name, top_page_html):
-        logger.warning(f"企業名不一致: {company_name} ({base_url})")
-        return ScrapeResult(
-            company_name=company_name,
-            base_url=base_url,
-            contact_url='',
-            phone='',
-            domain=domain,
-            error='company_mismatch'
-        )
+    # STEP 2: Webサイトから実際の企業名を抽出
+    extracted_name = extract_company_name_from_html(top_page_html, company_name)
+    if extracted_name != company_name:
+        logger.debug(f"企業名を更新: {company_name} → {extracted_name}")
+        company_name = extracted_name
 
     # STEP 3: お問い合わせURL抽出
     contact_url = extract_contact_from_html(top_page_html, base_url)
