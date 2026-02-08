@@ -47,15 +47,6 @@ class SearchWorkflow:
             existing_domains = await self.gas.get_existing_domains()
             logger.info(f"既存ドメイン: {len(existing_domains)}件")
 
-            # 進捗通知
-            await self.slack.notify_progress(
-                job.slack_channel_id,
-                job.slack_thread_ts,
-                "searching",
-                10,
-                f"既存リスト取得完了 ({len(existing_domains)}件)"
-            )
-
             # ステップ2: Serper検索
             job.update_status(JobStatus.SEARCHING, "企業を検索中...", 15)
             self.job_manager.update_job(job)
@@ -77,15 +68,6 @@ class SearchWorkflow:
                 )
                 return
 
-            # 進捗通知
-            await self.slack.notify_progress(
-                job.slack_channel_id,
-                job.slack_thread_ts,
-                "searching",
-                30,
-                f"検索完了 ({len(companies)}件の候補を発見)"
-            )
-
             # ステップ3: スクレイピング
             job.update_status(JobStatus.SCRAPING, f"{len(companies)}件をスクレイピング中...", 35)
             self.job_manager.update_job(job)
@@ -105,15 +87,6 @@ class SearchWorkflow:
                 if r.contact_url or r.phone
             ]
             logger.info(f"有効な結果: {len(successful_results)}件")
-
-            # 進捗通知
-            await self.slack.notify_progress(
-                job.slack_channel_id,
-                job.slack_thread_ts,
-                "scraping",
-                70,
-                f"スクレイピング完了 ({len(successful_results)}件取得)"
-            )
 
             # ステップ4: GAS保存
             job.update_status(JobStatus.SAVING, "スプレッドシートに保存中...", 80)

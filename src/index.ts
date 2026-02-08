@@ -164,14 +164,8 @@ async function main(): Promise<void> {
           });
 
           if (result.success) {
-            // ジョブ開始成功 - バックグラウンドで処理されるため、ここでは開始通知のみ
+            // ジョブ開始成功 - バックグラウンドで処理されるため、Slack通知は不要
             logger.info('Python API ジョブ開始成功', { jobId: result.jobId });
-
-            await slackAdapter.sendMessage(
-              event.channelId,
-              `🔍 検索ジョブを開始しました（ジョブID: ${result.jobId?.slice(0, 8)}...）\n処理完了後、このスレッドに結果を通知します。`,
-              threadTs
-            );
 
             // 成功ログの記録（ジョブ開始時点）
             await logService.recordExecution({
