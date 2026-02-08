@@ -24,11 +24,11 @@ export class NetworkError extends AIShineError {
 }
 
 /**
- * タイムアウトエラー（リトライ可能）
+ * タイムアウトエラー（リトライ不可 - Dify側のタイムアウトは再試行しても失敗する可能性が高い）
  */
 export class TimeoutError extends AIShineError {
   constructor(message: string) {
-    super(message, 'TIMEOUT_ERROR', true);
+    super(message, 'TIMEOUT_ERROR', false);
     this.name = 'TimeoutError';
   }
 }

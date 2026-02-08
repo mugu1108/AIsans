@@ -103,12 +103,32 @@ async function main(): Promise<void> {
         // 以降のメッセージはこのスレッド内に投稿
         const threadTs = startMessageTs;
 
-        // メンション部分を削除してクエリを抽出（件数はDify側でパース）
-        const query = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
+        // メンション部分を削除してクエリを抽出
+        let query = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
+
+        // 件数の上限チェック（50件を上限とする）
+        const MAX_COUNT = 50;
+        const countMatch = query.match(/(\d+)\s*件/);
+        if (countMatch) {
+          const requestedCount = parseInt(countMatch[1], 10);
+          if (requestedCount > MAX_COUNT) {
+            logger.warn(`指定件数が上限を超えています: ${requestedCount}件 → ${MAX_COUNT}件に制限`, { query });
+            query = query.replace(/\d+\s*件/, `${MAX_COUNT}件`);
+
+            // ユーザーに上限適用を通知
+            await slackAdapter.sendMessage(
+              event.channelId,
+              `※ 指定件数（${requestedCount}件）が上限を超えているため、${MAX_COUNT}件に制限して処理します。`,
+              startMessageTs
+            );
+          }
+        }
+
         logger.debug('クエリを抽出', { originalText: event.text, query });
 
         // ワークフロー実行（件数はDifyのinput_parseノードでパース）
-        const result = await orchestrator.executeWorkflow(query, 3, spreadsheetFolderId);
+        // タイムアウト系エラーはリトライしないため、リトライ回数は1に設定
+        const result = await orchestrator.executeWorkflow(query, 1, spreadsheetFolderId);
 
         // 結果処理
         if (result.success) {

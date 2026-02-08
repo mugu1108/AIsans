@@ -1,5 +1,5 @@
 import { DifyClient } from '../infrastructure/dify/DifyClient';
-import { AIShineError } from '../utils/errors';
+import { AIShineError, TimeoutError, DifyAPIError } from '../utils/errors';
 import { Logger, ConsoleLogger } from '../utils/logger';
 
 /**
@@ -56,13 +56,13 @@ export class WorkflowOrchestrator {
    * ワークフローを実行
    *
    * @param query - 検索クエリ（例: "東京のIT企業 50件"）件数はDify側でパース
-   * @param maxRetries - 最大リトライ回数（デフォルト: 3）
+   * @param maxRetries - 最大リトライ回数（デフォルト: 1、タイムアウト系はリトライしない）
    * @param _folderId - スプレッドシート保存先フォルダID（現在未使用、Dify側で処理）
    * @returns 実行結果
    */
   async executeWorkflow(
     query: string,
-    maxRetries: number = 3,
+    maxRetries: number = 1,
     _folderId?: string
   ): Promise<WorkflowExecutionResult> {
     const startTime = Date.now();
@@ -143,6 +143,18 @@ export class WorkflowOrchestrator {
 
         // リトライ不可なエラーの場合は即座にthrow
         if (error instanceof AIShineError && !error.retryable) {
+          throw error;
+        }
+
+        // タイムアウトエラー（504含む）はリトライしない（Dify側のタイムアウトは再試行しても失敗する可能性が高い）
+        if (error instanceof TimeoutError) {
+          this.logger.warn('タイムアウトエラーはリトライしません');
+          throw error;
+        }
+
+        // 504 Gateway Timeoutもリトライしない
+        if (error instanceof DifyAPIError && error.statusCode === 504) {
+          this.logger.warn('504 Gateway Timeoutはリトライしません');
           throw error;
         }
 
