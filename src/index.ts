@@ -103,23 +103,12 @@ async function main(): Promise<void> {
         // 以降のメッセージはこのスレッド内に投稿
         const threadTs = startMessageTs;
 
-        // メンション部分を削除してクエリを抽出
-        let queryText = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
+        // メンション部分を削除してクエリを抽出（件数はDify側でパース）
+        const query = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
+        logger.debug('クエリを抽出', { originalText: event.text, query });
 
-        // 件数を抽出（例: "50件", "50社", "100" など）
-        let targetCount = 30; // デフォルト30件
-        const countMatch = queryText.match(/(\d+)\s*(?:件|社)?$/);
-        if (countMatch) {
-          targetCount = parseInt(countMatch[1], 10);
-          // 件数部分をクエリから削除
-          queryText = queryText.replace(/\s*\d+\s*(?:件|社)?$/, '').trim();
-        }
-
-        const query = queryText;
-        logger.debug('クエリを抽出', { originalText: event.text, query, targetCount });
-
-        // ワークフロー実行（folderIdが指定されている場合はスプレッドシートも同時作成）
-        const result = await orchestrator.executeWorkflow(query, targetCount, 3, spreadsheetFolderId);
+        // ワークフロー実行（件数はDifyのinput_parseノードでパース）
+        const result = await orchestrator.executeWorkflow(query, 3, spreadsheetFolderId);
 
         // 結果処理
         if (result.success) {

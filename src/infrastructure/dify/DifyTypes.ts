@@ -7,13 +7,10 @@ export interface DifyWorkflowRequest {
    */
   inputs: {
     /**
-     * 検索キーワード（例: "東京のIT企業"）
+     * 検索キーワード（例: "東京のIT企業 50件"）
+     * 件数はDifyのinput_parseノードでパースされる
      */
     user_input: string;
-    /**
-     * 目標件数（任意、デフォルト: 30）※Difyのtext-input型のため文字列で送信
-     */
-    target_count?: string;
   };
 
   /**

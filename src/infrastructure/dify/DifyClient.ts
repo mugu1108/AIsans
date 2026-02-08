@@ -27,24 +27,21 @@ export class DifyClient {
   /**
    * 営業リスト作成ワークフローを実行してCSVを取得
    *
-   * @param query - 検索クエリ（自然言語、例: "東京のIT企業"）
-   * @param targetCount - 取得件数（デフォルト: 30）
+   * @param query - 検索クエリ（例: "東京のIT企業 50件"）件数はDify側でパース
    * @param userId - ユーザーID（デフォルト: 'slack-user'）
    * @returns CSVデータ（Buffer）と件数
    * @throws DifyAPIError, NetworkError, TimeoutError
    */
   async executeWorkflow(
     query: string,
-    targetCount: number = 30,
     userId: string = 'slack-user'
   ): Promise<{ csvBuffer: Buffer; rowCount: number; spreadsheetUrl?: string }> {
-    this.logger.debug('Dify Workflowを呼び出し中', { query, targetCount, userId });
+    this.logger.debug('Dify Workflowを呼び出し中', { query, userId });
 
     try {
       const requestBody: DifyWorkflowRequest = {
         inputs: {
           user_input: query,
-          target_count: String(targetCount),
         },
         response_mode: 'blocking',
         user: userId,

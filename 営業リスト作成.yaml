@@ -607,11 +607,11 @@ workflow:
         isInIteration: false
         isInLoop: false
         sourceType: start
-        targetType: http-request
-      id: start-source-fetch_existing-target
+        targetType: code
+      id: start-source-input_parse-target
       source: start
       sourceHandle: source
-      target: fetch_existing
+      target: input_parse
       targetHandle: target
       type: custom
       zIndex: 0
@@ -799,6 +799,18 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: input_parse-source-fetch_existing-target
+      source: input_parse
+      sourceHandle: source
+      target: fetch_existing
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -812,13 +824,6 @@ workflow:
           required: true
           type: text-input
           variable: user_input
-        - default: '30'
-          label: target_count
-          max_length: 10
-          options: []
-          required: false
-          type: text-input
-          variable: target_count
       height: 109
       id: start
       position:
@@ -849,7 +854,7 @@ workflow:
           text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\nユーザーの入力から、企業検索に最適な検索クエリを**必ず25〜30個**生成してください。\n30個に近いほど良い結果が得られます。少なすぎると企業数が不足します。\n\n**重要：以下の全カテゴリから満遍なくクエリを生成してください：**\n\n### A. 業種の細分化（8〜10個）\n例：IT企業 → システム開発会社、Web制作会社、SaaS企業、アプリ開発会社、インフラ構築、セキュリティ企業、AI開発会社、クラウドサービス、データ分析、IoT企業\n\n### B. 地域の細分化（6〜8個）\n例：東京 → 港区、渋谷区、新宿区、千代田区、品川区、中央区、目黒区、世田谷区\n\n### C. 企業規模・特徴（4〜5個）\n大手、中堅、中小、ベンチャー、スタートアップ、老舗\n\n### D. リスト・一覧系クエリ（4〜5個）\n「〇〇 企業一覧」「〇〇 会社 まとめ」「〇〇 企業 ランキング」「〇〇協会 会員」「〇〇 法人 リスト」\n\n### E. 公式サイト特化クエリ（3〜4個）\n「〇〇 株式会社 本社」「〇〇 企業 会社概要」「〇〇 co.jp」\n\n出力形式は必ず以下のJSON形式のみで出力してください：\n\n{\n  \"search_intent\": {\n    \"region\": \"抽出した地域\",\n    \"industry\": \"抽出した業種\",\n    \"conditions\": [\"抽出した条件\"],\n    \"summary\": \"検索意図の要約文\"\n  },\n  \"search_queries\": [\n    \"検索クエリ1\",\n    \"検索クエリ2\",\n    ...\n  ]\n}\n\n検索クエリ生成ルール：\n1. 「株式会社」「企業」「会社」などを含める\n2. 求人サイトではなく公式サイトがヒットしやすいクエリにする\n3. 同じような結果が返らないよう、クエリごとに切り口を変える\n4. **必ず25個以上生成すること。20個未満は不可。**\n"
         - id: user1
           role: user
-          text: '{{#start.user_input#}}'
+          text: '{{#input_parse.search_query#}}'
         selected: false
         title: 検索クエリ生成
         type: llm
@@ -1113,8 +1118,8 @@ workflow:
         prompt_template:
         - id: 9c8a74f9-47d4-4fd0-96ed-d716bd463213
           role: system
-          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#start.target_count#}}件以上にしてください。**\n入力データに{{#start.target_count#}}件以上の候補がある場合、出力が{{#start.target_count#}}件未満になることは許されません。\n{{#start.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect, wantedly, openwork,\
-            \ vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#start.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
+          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#input_parse.target_count#}}件以上にしてください。**\n入力データに{{#input_parse.target_count#}}件以上の候補がある場合、出力が{{#input_parse.target_count#}}件未満になることは許されません。\n{{#input_parse.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect,\
+            \ wantedly, openwork, vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#input_parse.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
         - id: 73eb4c43-7765-4ecb-9dbe-e3ddf6760391
           role: user
           text: '## 検索意図
@@ -1180,7 +1185,7 @@ workflow:
           value_type: string
           variable: llm_output
         - value_selector:
-          - start
+          - input_parse
           - target_count
           value_type: string
           variable: target_count_str
@@ -1201,7 +1206,7 @@ workflow:
         cases:
         - case_id: 'true'
           conditions:
-          - comparison_operator: '='
+          - comparison_operator: ≥
             id: 9a1ca000-0d01-4686-9c26-7c633522be04
             value: '1'
             varType: number
@@ -1247,12 +1252,12 @@ workflow:
           value_type: string
           variable: cleaned_companies_str
         - value_selector:
-          - start
-          - user_input
+          - input_parse
+          - search_query
           value_type: string
           variable: user_input
         - value_selector:
-          - start
+          - input_parse
           - target_count
           value_type: string
           variable: target_count_str
@@ -1293,8 +1298,8 @@ workflow:
           value_type: array[object]
           variable: scraped_data
         - value_selector:
-          - start
-          - user_input
+          - input_parse
+          - search_query
           value_type: string
           variable: user_input
         - value_selector:
@@ -1303,7 +1308,7 @@ workflow:
           value_type: number
           variable: scraped_count
         - value_selector:
-          - start
+          - input_parse
           - target_count
           value_type: string
           variable: target_count_str
@@ -1442,7 +1447,7 @@ workflow:
           value_type: number
           variable: accumulated_count
         - value_selector:
-          - start
+          - input_parse
           - target_count
           value_type: string
           variable: target_count_str
@@ -1472,12 +1477,12 @@ workflow:
         prompt_template:
         - id: retry1_sys
           role: system
-          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\n既存の企業リストでは{{#start.target_count#}}件に足りていません。新しい企業を見つけるための検索クエリを**20〜25個**生成してください。多いほど確実に{{#start.target_count#}}件に到達できます。\n\nこれは1回目の再検索です。**前回までとは完全に異なるアプローチ**で検索してください：\n\n**必須：以下の切り口を全て試してください**\n1. **業種の別表現**：同じ業種でも別の言い方（IT→情報通信、システム→ソフトウェア、Web→インターネット）\n2. **地域の細分化**：区単位、駅名、エリア名（渋谷、六本木、丸の内、五反田、大崎）\n3. **リスト/まとめ系**：「〇〇 企業一覧」「〇〇 おすすめ企業」「〇〇 優良企業」\n4. **業界団体**：「〇〇協会 会員企業」「〇〇連盟」\n5. **特化検索**：site:co.jp、「株式会社 〇〇 本社 東京」\n6. **関連業種**：メインの業種に近い別業種\n\n出力は必ず以下のJSON形式のみ：\n{\n  \"search_queries\": [\"クエリ1\", \"クエリ2\", ...]\n}"
+          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\n既存の企業リストでは{{#input_parse.target_count#}}件に足りていません。新しい企業を見つけるための検索クエリを**20〜25個**生成してください。多いほど確実に{{#input_parse.target_count#}}件に到達できます。\n\nこれは1回目の再検索です。**前回までとは完全に異なるアプローチ**で検索してください：\n\n**必須：以下の切り口を全て試してください**\n1. **業種の別表現**：同じ業種でも別の言い方（IT→情報通信、システム→ソフトウェア、Web→インターネット）\n2. **地域の細分化**：区単位、駅名、エリア名（渋谷、六本木、丸の内、五反田、大崎）\n3. **リスト/まとめ系**：「〇〇 企業一覧」「〇〇 おすすめ企業」「〇〇 優良企業」\n4. **業界団体**：「〇〇協会 会員企業」「〇〇連盟」\n5. **特化検索**：site:co.jp、「株式会社 〇〇 本社 東京」\n6. **関連業種**：メインの業種に近い別業種\n\n出力は必ず以下のJSON形式のみ：\n{\n  \"search_queries\": [\"クエリ1\", \"クエリ2\", ...]\n}"
         - id: retry1_user
           role: user
           text: '## 元の検索キーワード
 
-            {{#start.user_input#}}
+            {{#input_parse.search_query#}}
 
 
             ## 既に取得済みの企業名リスト
@@ -1763,8 +1768,8 @@ workflow:
         prompt_template:
         - id: retry1_cl_sys
           role: system
-          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#start.target_count#}}件以上にしてください。**\n入力データに{{#start.target_count#}}件以上の候補がある場合、出力が{{#start.target_count#}}件未満になることは許されません。\n{{#start.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect, wantedly, openwork,\
-            \ vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#start.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
+          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#input_parse.target_count#}}件以上にしてください。**\n入力データに{{#input_parse.target_count#}}件以上の候補がある場合、出力が{{#input_parse.target_count#}}件未満になることは許されません。\n{{#input_parse.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect,\
+            \ wantedly, openwork, vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#input_parse.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
         - id: retry1_cl_user
           role: user
           text: '## 検索意図
@@ -1874,7 +1879,7 @@ workflow:
           value_type: string
           variable: new_cleaned_str
         - value_selector:
-          - start
+          - input_parse
           - target_count
           value_type: string
           variable: target_count_str
@@ -1895,7 +1900,7 @@ workflow:
         cases:
         - case_id: 'true'
           conditions:
-          - comparison_operator: '='
+          - comparison_operator: ≥
             id: retry1_cond
             value: '1'
             varType: number
@@ -1952,7 +1957,7 @@ workflow:
           value_type: number
           variable: accumulated_count
         - value_selector:
-          - start
+          - input_parse
           - target_count
           value_type: string
           variable: target_count_str
@@ -1982,12 +1987,12 @@ workflow:
         prompt_template:
         - id: retry2_sys
           role: system
-          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\n既存の企業リストでは{{#start.target_count#}}件に足りていません。新しい企業を見つけるための検索クエリを**20〜25個**生成してください。多いほど確実に{{#start.target_count#}}件に到達できます。\n\nこれは2回目の再検索です。**前回までとは完全に異なるアプローチ**で検索してください：\n\n**必須：以下の切り口を全て試してください**\n1. **業種の別表現**：同じ業種でも別の言い方（IT→情報通信、システム→ソフトウェア、Web→インターネット）\n2. **地域の細分化**：区単位、駅名、エリア名（渋谷、六本木、丸の内、五反田、大崎）\n3. **リスト/まとめ系**：「〇〇 企業一覧」「〇〇 おすすめ企業」「〇〇 優良企業」\n4. **業界団体**：「〇〇協会 会員企業」「〇〇連盟」\n5. **特化検索**：site:co.jp、「株式会社 〇〇 本社 東京」\n6. **関連業種**：メインの業種に近い別業種\n\n出力は必ず以下のJSON形式のみ：\n{\n  \"search_queries\": [\"クエリ1\", \"クエリ2\", ...]\n}"
+          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\n既存の企業リストでは{{#input_parse.target_count#}}件に足りていません。新しい企業を見つけるための検索クエリを**20〜25個**生成してください。多いほど確実に{{#input_parse.target_count#}}件に到達できます。\n\nこれは2回目の再検索です。**前回までとは完全に異なるアプローチ**で検索してください：\n\n**必須：以下の切り口を全て試してください**\n1. **業種の別表現**：同じ業種でも別の言い方（IT→情報通信、システム→ソフトウェア、Web→インターネット）\n2. **地域の細分化**：区単位、駅名、エリア名（渋谷、六本木、丸の内、五反田、大崎）\n3. **リスト/まとめ系**：「〇〇 企業一覧」「〇〇 おすすめ企業」「〇〇 優良企業」\n4. **業界団体**：「〇〇協会 会員企業」「〇〇連盟」\n5. **特化検索**：site:co.jp、「株式会社 〇〇 本社 東京」\n6. **関連業種**：メインの業種に近い別業種\n\n出力は必ず以下のJSON形式のみ：\n{\n  \"search_queries\": [\"クエリ1\", \"クエリ2\", ...]\n}"
         - id: retry2_user
           role: user
           text: '## 元の検索キーワード
 
-            {{#start.user_input#}}
+            {{#input_parse.search_query#}}
 
 
             ## 既に取得済みの企業名リスト
@@ -2273,8 +2278,8 @@ workflow:
         prompt_template:
         - id: retry2_cl_sys
           role: system
-          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#start.target_count#}}件以上にしてください。**\n入力データに{{#start.target_count#}}件以上の候補がある場合、出力が{{#start.target_count#}}件未満になることは許されません。\n{{#start.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect, wantedly, openwork,\
-            \ vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#start.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
+          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#input_parse.target_count#}}件以上にしてください。**\n入力データに{{#input_parse.target_count#}}件以上の候補がある場合、出力が{{#input_parse.target_count#}}件未満になることは許されません。\n{{#input_parse.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect,\
+            \ wantedly, openwork, vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#input_parse.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
         - id: retry2_cl_user
           role: user
           text: '## 検索意図
@@ -2384,7 +2389,7 @@ workflow:
           value_type: string
           variable: new_cleaned_str
         - value_selector:
-          - start
+          - input_parse
           - target_count
           value_type: string
           variable: target_count_str
@@ -2405,7 +2410,7 @@ workflow:
         cases:
         - case_id: 'true'
           conditions:
-          - comparison_operator: '='
+          - comparison_operator: ≥
             id: retry2_cond
             value: '1'
             varType: number
@@ -2462,7 +2467,7 @@ workflow:
           value_type: number
           variable: accumulated_count
         - value_selector:
-          - start
+          - input_parse
           - target_count
           value_type: string
           variable: target_count_str
@@ -2492,12 +2497,12 @@ workflow:
         prompt_template:
         - id: retry3_sys
           role: system
-          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\n既存の企業リストでは{{#start.target_count#}}件に足りていません。新しい企業を見つけるための検索クエリを**20〜25個**生成してください。多いほど確実に{{#start.target_count#}}件に到達できます。\n\nこれは3回目の再検索です。**前回までとは完全に異なるアプローチ**で検索してください：\n\n**必須：以下の切り口を全て試してください**\n1. **業種の別表現**：同じ業種でも別の言い方（IT→情報通信、システム→ソフトウェア、Web→インターネット）\n2. **地域の細分化**：区単位、駅名、エリア名（渋谷、六本木、丸の内、五反田、大崎）\n3. **リスト/まとめ系**：「〇〇 企業一覧」「〇〇 おすすめ企業」「〇〇 優良企業」\n4. **業界団体**：「〇〇協会 会員企業」「〇〇連盟」\n5. **特化検索**：site:co.jp、「株式会社 〇〇 本社 東京」\n6. **関連業種**：メインの業種に近い別業種\n\n出力は必ず以下のJSON形式のみ：\n{\n  \"search_queries\": [\"クエリ1\", \"クエリ2\", ...]\n}"
+          text: "あなたは営業リスト作成のための検索クエリ最適化エキスパートです。\n\n既存の企業リストでは{{#input_parse.target_count#}}件に足りていません。新しい企業を見つけるための検索クエリを**20〜25個**生成してください。多いほど確実に{{#input_parse.target_count#}}件に到達できます。\n\nこれは3回目の再検索です。**前回までとは完全に異なるアプローチ**で検索してください：\n\n**必須：以下の切り口を全て試してください**\n1. **業種の別表現**：同じ業種でも別の言い方（IT→情報通信、システム→ソフトウェア、Web→インターネット）\n2. **地域の細分化**：区単位、駅名、エリア名（渋谷、六本木、丸の内、五反田、大崎）\n3. **リスト/まとめ系**：「〇〇 企業一覧」「〇〇 おすすめ企業」「〇〇 優良企業」\n4. **業界団体**：「〇〇協会 会員企業」「〇〇連盟」\n5. **特化検索**：site:co.jp、「株式会社 〇〇 本社 東京」\n6. **関連業種**：メインの業種に近い別業種\n\n出力は必ず以下のJSON形式のみ：\n{\n  \"search_queries\": [\"クエリ1\", \"クエリ2\", ...]\n}"
         - id: retry3_user
           role: user
           text: '## 元の検索キーワード
 
-            {{#start.user_input#}}
+            {{#input_parse.search_query#}}
 
 
             ## 既に取得済みの企業名リスト
@@ -2783,8 +2788,8 @@ workflow:
         prompt_template:
         - id: retry3_cl_sys
           role: system
-          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#start.target_count#}}件以上にしてください。**\n入力データに{{#start.target_count#}}件以上の候補がある場合、出力が{{#start.target_count#}}件未満になることは許されません。\n{{#start.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect, wantedly, openwork,\
-            \ vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#start.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
+          text: "あなたは企業データクレンジングの専門家です。\n\n## タスク\n検索結果から有効な企業情報を抽出・正規化してください。\n\n## ★最重要ルール★\n**出力は必ず{{#input_parse.target_count#}}件以上にしてください。**\n入力データに{{#input_parse.target_count#}}件以上の候補がある場合、出力が{{#input_parse.target_count#}}件未満になることは許されません。\n{{#input_parse.target_count#}}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。\n\n## 処理ルール\n\n### 1. 企業名の正規化\n検索結果のtitleから正しい企業名を抽出：\n- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」\n- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」\n- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外\n- 「横浜工場」のような施設名のみは除外\n- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）\n- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外\n- 「地域とともに」などのキャッチフレーズは除外\n\n### 2. URL正規化\n- ブログ記事URL → トップページURLに変換\n  例: https://example.co.jp/blog/123 → https://example.co.jp/\n- 部門ページURL → トップページURLに変換\n  例: https://example.co.jp/about/history → https://example.co.jp/\n\n### 3. 除外対象\n以下は必ず除外：\n- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）\n- SNS（twitter, facebook, instagram, youtube, tiktok等）\n- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）\n- Wikipedia\n- 企業紹介サイト（baseconnect,\
+            \ wantedly, openwork, vorkers等）\n- 政府・自治体サイト（.go.jp, .lg.jp）\n- 企業名が全く抽出できずドメインからも推測不可能なもの\n**上記に該当しないものは必ず残してください。迷ったら残す。**\n\n### 4. 重複排除\n- 同一ドメインの企業は1つだけ残す\n- 既存企業リストに含まれる企業名は除外\n\n## 出力形式\n必ず以下のJSON形式のみで出力（説明文不要）：\n\n{\n  \"cleaned_companies\": [\n    {\n      \"company_name\": \"株式会社〇〇\",\n      \"url\": \"https://example.co.jp/\",\n      \"domain\": \"example.co.jp\",\n      \"relevance_score\": 0.95\n    }\n  ],\n  \"excluded_count\": 15,\n  \"valid_count\": 35\n}\n\nrelevance_scoreは0.1〜1.0の範囲で設定。**{{#input_parse.target_count#}}件以上を最優先にし、迷ったら残す方向で判断してください。**\nrelevance_scoreが高い順にソートすること。"
         - id: retry3_cl_user
           role: user
           text: '## 検索意図
@@ -2894,7 +2899,7 @@ workflow:
           value_type: string
           variable: new_cleaned_str
         - value_selector:
-          - start
+          - input_parse
           - target_count
           value_type: string
           variable: target_count_str
@@ -2915,7 +2920,7 @@ workflow:
         cases:
         - case_id: 'true'
           conditions:
-          - comparison_operator: '='
+          - comparison_operator: ≥
             id: retry3_cond
             value: '1'
             varType: number
@@ -3134,8 +3139,8 @@ workflow:
           value_type: string
           variable: gas_response
         - value_selector:
-          - start
-          - user_input
+          - input_parse
+          - search_query
           value_type: string
           variable: user_input
       height: 52
@@ -3320,8 +3325,8 @@ workflow:
           value_type: string
           variable: gas_update_response
         - value_selector:
-          - start
-          - user_input
+          - input_parse
+          - search_query
           value_type: string
           variable: user_input
       height: 52
@@ -3332,6 +3337,38 @@ workflow:
       positionAbsolute:
         x: 2330.0
         y: 587.0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import re\n\ndef main(user_input: str) -> dict:\n    \"\"\"user_inputから件数を抽出し、検索クエリと分離する\"\"\"\n    text = (user_input or \"\").strip()\n    target_count = \"30\"  # デフォルト\n    search_query = text\n\n    # 「50件」「100件」などのパターンを検出\n    match = re.search(r'(\\d+)\\s*件', text)\n    if match:\n        target_count = match.group(1)\n        # 件数部分を除去してクリーンなクエリにする\n        search_query = re.sub(r'\\s*\\d+\\s*件\\s*', ' ', text).strip()\n\n    return {\n        \"target_count\": target_count,\n        \"search_query\": search_query\n    }"
+        code_language: python3
+        outputs:
+          target_count:
+            children: null
+            type: string
+          search_query:
+            children: null
+            type: string
+        selected: false
+        title: 入力パース
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - user_input
+          value_type: string
+          variable: user_input
+      height: 52
+      id: input_parse
+      position:
+        x: 256.66631726143646
+        y: 105.11703232915971
+      positionAbsolute:
+        x: 256.66631726143646
+        y: 105.11703232915971
       selected: false
       sourcePosition: right
       targetPosition: left
