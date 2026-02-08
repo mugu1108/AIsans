@@ -31,7 +31,7 @@ class GASClient:
             既存ドメインのセット
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 response = await client.post(
                     self.webhook_url,
                     json={"action": "get_domains"},
@@ -62,7 +62,7 @@ class GASClient:
             GASからのレスポンス（spreadsheet_url等）
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 response = await client.post(
                     self.webhook_url,
                     json={
@@ -99,7 +99,7 @@ class GASClient:
             GASからのレスポンス
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 response = await client.post(
                     self.webhook_url,
                     json={
