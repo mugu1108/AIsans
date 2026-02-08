@@ -114,29 +114,18 @@ class SlackNotifier:
             result_count: 結果件数
             spreadsheet_url: スプレッドシートURL
         """
-        blocks = [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f":white_check_mark: *営業リスト作成完了*\n\n"
-                            f"*検索キーワード:* {search_keyword}\n"
-                            f"*取得件数:* {result_count}件"
-                }
-            }
+        # メッセージを構築
+        message_lines = [
+            f":white_check_mark: 完了しました！{result_count}社のリストを作成しました"
         ]
 
         if spreadsheet_url:
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f":spreadsheet: <{spreadsheet_url}|スプレッドシートを開く>"
-                }
-            })
+            message_lines.append("")
+            message_lines.append(f":bar_chart: Googleスプレッドシートも作成しました！")
+            message_lines.append(spreadsheet_url)
 
-        text = f"営業リスト作成完了: {search_keyword} ({result_count}件)"
-        return await self.send_message(channel, text, thread_ts, blocks)
+        text = "\n".join(message_lines)
+        return await self.send_message(channel, text, thread_ts)
 
     async def notify_error(
         self,
