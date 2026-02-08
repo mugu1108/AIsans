@@ -155,6 +155,60 @@ class SlackNotifier:
         text = f":x: *エラーが発生しました*\n```{error_message}```"
         return await self.send_message(channel, text, thread_ts)
 
+    async def upload_file(
+        self,
+        channel: str,
+        file_content: bytes,
+        filename: str,
+        title: Optional[str] = None,
+        thread_ts: Optional[str] = None,
+    ) -> bool:
+        """
+        Slackにファイルをアップロード
+
+        Args:
+            channel: チャンネルID
+            file_content: ファイルの内容（バイト）
+            filename: ファイル名
+            title: ファイルのタイトル
+            thread_ts: スレッドのタイムスタンプ
+
+        Returns:
+            アップロード成功したかどうか
+        """
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                # files.uploadV2 API を使用
+                data = {
+                    "channels": channel,
+                    "filename": filename,
+                    "title": title or filename,
+                }
+                if thread_ts:
+                    data["thread_ts"] = thread_ts
+
+                files = {
+                    "file": (filename, file_content, "text/csv"),
+                }
+
+                response = await client.post(
+                    "https://slack.com/api/files.upload",
+                    headers={"Authorization": f"Bearer {self.bot_token}"},
+                    data=data,
+                    files=files,
+                )
+                result = response.json()
+
+                if not result.get("ok"):
+                    logger.error(f"Slackファイルアップロードエラー: {result.get('error', 'unknown')}")
+                    return False
+
+                logger.info(f"Slackファイルアップロード成功: {filename}")
+                return True
+        except Exception as e:
+            logger.error(f"Slackファイルアップロード例外: {e}")
+            return False
+
     def _get_status_emoji(self, status: str) -> str:
         """ステータスに応じた絵文字を取得"""
         emoji_map = {

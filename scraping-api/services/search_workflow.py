@@ -4,7 +4,10 @@
 """
 
 import asyncio
+import csv
+import io
 import logging
+from datetime import datetime
 from typing import Optional
 
 from models.job import Job, JobStatus
@@ -128,6 +131,20 @@ class SearchWorkflow:
                 spreadsheet_url,
             )
 
+            # CSVファイルを生成してSlackにアップロード
+            if successful_results:
+                csv_content = self._generate_csv(companies_to_save)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"sales_list_{timestamp}.csv"
+
+                await self.slack.upload_file(
+                    job.slack_channel_id,
+                    csv_content,
+                    filename,
+                    title=f"営業リスト - {job.search_keyword}",
+                    thread_ts=job.slack_thread_ts,
+                )
+
             logger.info(f"ジョブ完了: {job.id} ({len(successful_results)}件)")
 
         except Exception as e:
@@ -140,6 +157,34 @@ class SearchWorkflow:
                 job.slack_thread_ts,
                 f"処理中にエラーが発生しました: {str(e)}"
             )
+
+    def _generate_csv(self, companies: list[dict]) -> bytes:
+        """
+        企業データからCSVを生成
+
+        Args:
+            companies: 企業データのリスト
+
+        Returns:
+            CSVデータ（バイト）
+        """
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # ヘッダー
+        writer.writerow(["企業名", "URL", "お問い合わせURL", "電話番号", "ドメイン"])
+
+        # データ行
+        for company in companies:
+            writer.writerow([
+                company.get("company_name", ""),
+                company.get("base_url", ""),
+                company.get("contact_url", ""),
+                company.get("phone", ""),
+                company.get("domain", ""),
+            ])
+
+        return output.getvalue().encode("utf-8-sig")  # BOM付きUTF-8（Excel対応）
 
 
 async def run_workflow_async(
