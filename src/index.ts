@@ -11,6 +11,7 @@ import { LogService } from './domain/services/LogService';
 import { AIEmployeeRepository } from './infrastructure/database/repositories/AIEmployeeRepository';
 import { LogRepository } from './infrastructure/database/repositories/LogRepository';
 import { DifyClient } from './infrastructure/dify/DifyClient';
+import { PythonAPIClient } from './infrastructure/python/PythonAPIClient';
 import { WorkflowOrchestrator } from './application/WorkflowOrchestrator';
 import { getEnvConfig, logEnvironmentSummary } from './config/env';
 import { disconnectPrisma } from './infrastructure/database/prisma';
@@ -45,6 +46,20 @@ async function main(): Promise<void> {
     logger.info('Infrastructure層を初期化しています...');
     const difyClient = new DifyClient(env.DIFY_API_URL, env.DIFY_API_KEY, logger);
 
+    // Python API クライアントの初期化（設定されている場合）
+    let pythonClient: PythonAPIClient | undefined;
+    const usePythonAPI = !!env.PYTHON_API_URL && !!env.GAS_WEBHOOK_URL;
+
+    if (usePythonAPI) {
+      pythonClient = new PythonAPIClient(env.PYTHON_API_URL!, logger);
+      logger.info('Python API モードを有効化しました', {
+        apiUrl: env.PYTHON_API_URL,
+        gasWebhookUrl: env.GAS_WEBHOOK_URL,
+      });
+    } else {
+      logger.info('Dify モードで動作します（Python API未設定）');
+    }
+
     // スプレッドシート機能のフォルダID（環境変数から取得）
     const spreadsheetFolderId = env.GOOGLE_DRIVE_FOLDER_ID;
     if (spreadsheetFolderId) {
@@ -55,7 +70,7 @@ async function main(): Promise<void> {
 
     // Application層の初期化
     logger.info('Application層を初期化しています...');
-    const orchestrator = new WorkflowOrchestrator(difyClient, logger);
+    const orchestrator = new WorkflowOrchestrator(difyClient, logger, pythonClient);
 
     // Interface層の初期化
     logger.info('Slackアダプターを初期化しています...');
@@ -65,6 +80,10 @@ async function main(): Promise<void> {
       env.SLACK_APP_TOKEN,
       logger
     );
+
+    // 件数上限（Python API: 300件、Dify: 50件）
+    const MAX_COUNT = usePythonAPI ? 300 : 50;
+    logger.info(`件数上限: ${MAX_COUNT}件`);
 
     // イベントハンドラの登録
     logger.info('イベントハンドラを登録しています...');
@@ -104,83 +123,171 @@ async function main(): Promise<void> {
         const threadTs = startMessageTs;
 
         // メンション部分を削除してクエリを抽出
-        const query = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
-        logger.debug('クエリを抽出', { originalText: event.text, query });
+        let query = event.text.replace(/<@[A-Z0-9]+>/g, '').trim();
 
-        // ワークフロー実行（folderIdが指定されている場合はスプレッドシートも同時作成）
-        const result = await orchestrator.executeWorkflow(query, 3, spreadsheetFolderId);
+        // 件数を抽出
+        let targetCount = 30; // デフォルト30件
+        const countMatch = query.match(/(\d+)\s*件/);
+        if (countMatch) {
+          const requestedCount = parseInt(countMatch[1], 10);
+          if (requestedCount > MAX_COUNT) {
+            logger.warn(`指定件数が上限を超えています: ${requestedCount}件 → ${MAX_COUNT}件に制限`, { query });
+            query = query.replace(/\d+\s*件/, `${MAX_COUNT}件`);
+            targetCount = MAX_COUNT;
 
-        // 結果処理
-        if (result.success) {
-          // 成功時
-          logger.info('ワークフロー実行成功', {
-            resultCount: result.resultCount,
-            processingTimeSeconds: result.processingTimeSeconds,
-          });
-
-          const timestamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15);
-          const filename = `sales_list_${timestamp}.csv`;
-
-          // 完了メッセージを投稿（スプレッドシートURLがある場合は一緒に表示）
-          let completeMessage = `✅ 完了しました！${result.resultCount}社のリストを作成しました`;
-          if (result.spreadsheetUrl) {
-            completeMessage += `\n\n📊 Googleスプレッドシートも作成しました！\n${result.spreadsheetUrl}`;
+            // ユーザーに上限適用を通知
+            await slackAdapter.sendMessage(
+              event.channelId,
+              `※ 指定件数（${requestedCount}件）が上限を超えているため、${MAX_COUNT}件に制限して処理します。`,
+              startMessageTs
+            );
+          } else {
+            targetCount = requestedCount;
           }
-          await slackAdapter.sendMessage(
-            event.channelId,
-            completeMessage,
-            threadTs
-          );
+        }
 
-          // その後にCSVファイルを送信
-          await slackAdapter.sendFile(
-            event.channelId,
-            result.csvBuffer!,
-            filename,
-            undefined, // コメントなし
-            threadTs
-          );
+        logger.debug('クエリを抽出', { originalText: event.text, query, targetCount });
 
-          // 成功ログの記録
-          await logService.recordExecution({
-            aiEmployeeId: employee.id,
-            userId: event.userId,
-            userName: event.userName,
-            platform: 'slack',
-            channelId: event.channelId,
-            inputKeyword: event.text,
-            status: 'success',
-            resultCount: result.resultCount,
-            processingTimeSeconds: result.processingTimeSeconds,
+        // Python API モードの場合
+        if (usePythonAPI && pythonClient) {
+          logger.info('Python API モードで処理開始', { query, targetCount });
+
+          // 検索キーワードを抽出（件数部分を除去）
+          const searchKeyword = query.replace(/\d+\s*件/, '').trim();
+
+          const result = await orchestrator.executeSearchJob({
+            searchKeyword,
+            targetCount,
+            gasWebhookUrl: env.GAS_WEBHOOK_URL!,
+            slackChannelId: event.channelId,
+            slackThreadTs: threadTs,
           });
+
+          if (result.success) {
+            // ジョブ開始成功 - バックグラウンドで処理されるため、ここでは開始通知のみ
+            logger.info('Python API ジョブ開始成功', { jobId: result.jobId });
+
+            await slackAdapter.sendMessage(
+              event.channelId,
+              `🔍 検索ジョブを開始しました（ジョブID: ${result.jobId?.slice(0, 8)}...）\n処理完了後、このスレッドに結果を通知します。`,
+              threadTs
+            );
+
+            // 成功ログの記録（ジョブ開始時点）
+            await logService.recordExecution({
+              aiEmployeeId: employee.id,
+              userId: event.userId,
+              userName: event.userName,
+              platform: 'slack',
+              channelId: event.channelId,
+              inputKeyword: event.text,
+              status: 'success',
+              resultCount: 0, // バックグラウンド処理のため件数は後で更新
+              processingTimeSeconds: result.processingTimeSeconds,
+            });
+          } else {
+            // ジョブ開始失敗
+            logger.error('Python API ジョブ開始失敗', new Error(result.errorMessage));
+
+            await slackAdapter.sendErrorWithRetry(
+              event.channelId,
+              result.errorMessage!,
+              threadTs
+            );
+
+            // エラーログの記録
+            await logService.recordExecution({
+              aiEmployeeId: employee.id,
+              userId: event.userId,
+              userName: event.userName,
+              platform: 'slack',
+              channelId: event.channelId,
+              inputKeyword: event.text,
+              status: 'error',
+              processingTimeSeconds: result.processingTimeSeconds,
+              errorMessage: result.errorMessage,
+            });
+          }
         } else {
-          // 失敗時
-          logger.error('ワークフロー実行失敗', new Error(result.errorMessage));
+          // Dify モード（従来の同期処理）
+          logger.info('Dify モードで処理開始', { query });
 
-          await slackAdapter.sendErrorWithRetry(
-            event.channelId,
-            result.errorMessage!,
-            threadTs
-          );
+          // ワークフロー実行（件数はDifyのinput_parseノードでパース）
+          // タイムアウト系エラーはリトライしないため、リトライ回数は1に設定
+          const result = await orchestrator.executeWorkflow(query, 1, spreadsheetFolderId);
 
-          // エラーログの記録
-          await logService.recordExecution({
-            aiEmployeeId: employee.id,
-            userId: event.userId,
-            userName: event.userName,
-            platform: 'slack',
-            channelId: event.channelId,
-            inputKeyword: event.text,
-            status: 'error',
-            processingTimeSeconds: result.processingTimeSeconds,
-            errorMessage: result.errorMessage,
-          });
+          // 結果処理
+          if (result.success) {
+            // 成功時
+            logger.info('ワークフロー実行成功', {
+              resultCount: result.resultCount,
+              processingTimeSeconds: result.processingTimeSeconds,
+            });
+
+            const timestamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15);
+            const filename = `sales_list_${timestamp}.csv`;
+
+            // 完了メッセージを投稿（スプレッドシートURLがある場合は一緒に表示）
+            let completeMessage = `✅ 完了しました！${result.resultCount}社のリストを作成しました`;
+            if (result.spreadsheetUrl) {
+              completeMessage += `\n\n📊 Googleスプレッドシートも作成しました！\n${result.spreadsheetUrl}`;
+            }
+            await slackAdapter.sendMessage(
+              event.channelId,
+              completeMessage,
+              threadTs
+            );
+
+            // その後にCSVファイルを送信
+            await slackAdapter.sendFile(
+              event.channelId,
+              result.csvBuffer!,
+              filename,
+              undefined, // コメントなし
+              threadTs
+            );
+
+            // 成功ログの記録
+            await logService.recordExecution({
+              aiEmployeeId: employee.id,
+              userId: event.userId,
+              userName: event.userName,
+              platform: 'slack',
+              channelId: event.channelId,
+              inputKeyword: event.text,
+              status: 'success',
+              resultCount: result.resultCount,
+              processingTimeSeconds: result.processingTimeSeconds,
+            });
+          } else {
+            // 失敗時
+            logger.error('ワークフロー実行失敗', new Error(result.errorMessage));
+
+            await slackAdapter.sendErrorWithRetry(
+              event.channelId,
+              result.errorMessage!,
+              threadTs
+            );
+
+            // エラーログの記録
+            await logService.recordExecution({
+              aiEmployeeId: employee.id,
+              userId: event.userId,
+              userName: event.userName,
+              platform: 'slack',
+              channelId: event.channelId,
+              inputKeyword: event.text,
+              status: 'error',
+              processingTimeSeconds: result.processingTimeSeconds,
+              errorMessage: result.errorMessage,
+            });
+          }
         }
 
         const totalTime = Math.floor((Date.now() - startTime) / 1000);
         logger.info('メンションイベント処理完了', {
           totalTimeSeconds: totalTime,
-          status: result.success ? 'success' : 'error',
+          mode: usePythonAPI ? 'python' : 'dify',
         });
       } catch (error) {
         // イベント処理中のエラー
@@ -232,7 +339,7 @@ async function main(): Promise<void> {
     await slackAdapter.start(env.PORT);
 
     logger.info('========================================');
-    logger.info('🚀 AI-Shineが正常に起動しました！');
+    logger.info(`🚀 AI-Shineが正常に起動しました！(${usePythonAPI ? 'Python API' : 'Dify'}モード)`);
     logger.info('========================================');
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));

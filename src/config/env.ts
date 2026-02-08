@@ -25,9 +25,13 @@ export interface EnvironmentVariables {
   SLACK_SIGNING_SECRET: string;
   SLACK_APP_TOKEN?: string; // Socket Mode用（任意）
 
-  // Dify Workflow API
+  // Dify Workflow API（レガシー、移行後は削除予定）
   DIFY_API_URL: string;
   DIFY_API_KEY: string;
+
+  // Python Search API
+  PYTHON_API_URL?: string;
+  GAS_WEBHOOK_URL?: string;
 
   // Google API（任意）
   GOOGLE_SERVICE_ACCOUNT_KEY_PATH?: string;
@@ -155,6 +159,8 @@ function loadEnvironmentVariables(): EnvironmentVariables {
     SLACK_APP_TOKEN: getEnv('SLACK_APP_TOKEN'),
     DIFY_API_URL: requireEnv('DIFY_API_URL'),
     DIFY_API_KEY: requireEnv('DIFY_API_KEY'),
+    PYTHON_API_URL: getEnv('PYTHON_API_URL'),
+    GAS_WEBHOOK_URL: getEnv('GAS_WEBHOOK_URL'),
     GOOGLE_SERVICE_ACCOUNT_KEY_PATH: getEnv('GOOGLE_SERVICE_ACCOUNT_KEY_PATH'),
     GOOGLE_DRIVE_FOLDER_ID: getEnv('GOOGLE_DRIVE_FOLDER_ID'),
     PORT: getPort(),
@@ -201,6 +207,8 @@ export function logEnvironmentSummary(): void {
   console.log(`SLACK_APP_TOKEN:                    ${env.SLACK_APP_TOKEN ? maskToken(env.SLACK_APP_TOKEN) : '(未設定)'}`);
   console.log(`DIFY_API_URL:                       ${env.DIFY_API_URL}`);
   console.log(`DIFY_API_KEY:                       ${maskToken(env.DIFY_API_KEY)}`);
+  console.log(`PYTHON_API_URL:                     ${env.PYTHON_API_URL || '(未設定)'}`);
+  console.log(`GAS_WEBHOOK_URL:                    ${env.GAS_WEBHOOK_URL || '(未設定)'}`);
   console.log(`GOOGLE_SERVICE_ACCOUNT_KEY_PATH:    ${env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || '(未設定)'}`);
   console.log(`GOOGLE_DRIVE_FOLDER_ID:             ${env.GOOGLE_DRIVE_FOLDER_ID || '(未設定)'}`);
   console.log('========================================');

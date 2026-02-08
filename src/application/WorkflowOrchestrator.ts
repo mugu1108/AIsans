@@ -1,5 +1,6 @@
 import { DifyClient } from '../infrastructure/dify/DifyClient';
-import { AIShineError } from '../utils/errors';
+import { PythonAPIClient } from '../infrastructure/python/PythonAPIClient';
+import { AIShineError, TimeoutError, DifyAPIError } from '../utils/errors';
 import { Logger, ConsoleLogger } from '../utils/logger';
 
 /**
@@ -12,7 +13,7 @@ export interface WorkflowExecutionResult {
   success: boolean;
 
   /**
-   * CSV生成結果（成功時）
+   * CSV生成結果（成功時、Difyモードのみ）
    */
   csvBuffer?: Buffer;
 
@@ -35,34 +36,122 @@ export interface WorkflowExecutionResult {
    * スプレッドシートURL（成功時、スプレッドシート作成時のみ）
    */
   spreadsheetUrl?: string;
+
+  /**
+   * ジョブID（Python APIモードのみ）
+   */
+  jobId?: string;
+}
+
+/**
+ * Python API用検索パラメータ
+ */
+export interface PythonSearchParams {
+  searchKeyword: string;
+  targetCount: number;
+  gasWebhookUrl: string;
+  slackChannelId: string;
+  slackThreadTs: string;
+  queries?: string[];
 }
 
 /**
  * ワークフローオーケストレーター
  *
- * Dify Workflowとの連携を調整
+ * Dify WorkflowまたはPython APIとの連携を調整
  */
 export class WorkflowOrchestrator {
   private logger: Logger;
+  private pythonClient?: PythonAPIClient;
 
   constructor(
     private difyClient: DifyClient,
-    logger?: Logger
+    logger?: Logger,
+    pythonClient?: PythonAPIClient
   ) {
     this.logger = logger || new ConsoleLogger();
+    this.pythonClient = pythonClient;
   }
 
   /**
-   * ワークフローを実行
+   * Python APIクライアントを設定
+   */
+  setPythonClient(pythonClient: PythonAPIClient): void {
+    this.pythonClient = pythonClient;
+  }
+
+  /**
+   * Python APIで非同期検索ジョブを開始
    *
-   * @param query - 検索クエリ（自然言語、例: "東京のIT企業"）
-   * @param maxRetries - 最大リトライ回数（デフォルト: 3）
+   * バックグラウンドで処理され、完了時にSlackに通知される
+   *
+   * @param params - 検索パラメータ
+   * @returns ジョブ開始結果（jobId含む）
+   */
+  async executeSearchJob(
+    params: PythonSearchParams
+  ): Promise<WorkflowExecutionResult> {
+    const startTime = Date.now();
+
+    if (!this.pythonClient) {
+      return {
+        success: false,
+        errorMessage: 'Python APIクライアントが設定されていません',
+        processingTimeSeconds: this.calculateProcessingTime(startTime),
+      };
+    }
+
+    this.logger.info('Python API 検索ジョブを開始', {
+      searchKeyword: params.searchKeyword,
+      targetCount: params.targetCount,
+    });
+
+    try {
+      const response = await this.pythonClient.startSearch(
+        params.searchKeyword,
+        params.targetCount,
+        params.gasWebhookUrl,
+        params.slackChannelId,
+        params.slackThreadTs,
+        params.queries
+      );
+
+      this.logger.info('Python API ジョブ開始成功', {
+        jobId: response.job_id,
+        message: response.message,
+      });
+
+      return {
+        success: true,
+        jobId: response.job_id,
+        processingTimeSeconds: this.calculateProcessingTime(startTime),
+      };
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+
+      this.logger.error('Python API ジョブ開始エラー', err, {
+        searchKeyword: params.searchKeyword,
+      });
+
+      return {
+        success: false,
+        errorMessage: err.message,
+        processingTimeSeconds: this.calculateProcessingTime(startTime),
+      };
+    }
+  }
+
+  /**
+   * ワークフローを実行（Difyモード - レガシー）
+   *
+   * @param query - 検索クエリ（例: "東京のIT企業 50件"）件数はDify側でパース
+   * @param maxRetries - 最大リトライ回数（デフォルト: 1、タイムアウト系はリトライしない）
    * @param _folderId - スプレッドシート保存先フォルダID（現在未使用、Dify側で処理）
    * @returns 実行結果
    */
   async executeWorkflow(
     query: string,
-    maxRetries: number = 3,
+    maxRetries: number = 1,
     _folderId?: string
   ): Promise<WorkflowExecutionResult> {
     const startTime = Date.now();
@@ -73,10 +162,10 @@ export class WorkflowOrchestrator {
     });
 
     try {
-      // Dify Workflowを呼び出し
+      // Dify Workflowを呼び出し（件数はDifyのinput_parseノードでパース）
       this.logger.debug('Dify Workflowを呼び出し中');
       const result = await this.retryWithBackoff(
-        () => this.difyClient.executeWorkflow(query, 30),
+        () => this.difyClient.executeWorkflow(query),
         maxRetries
       );
 
@@ -96,6 +185,7 @@ export class WorkflowOrchestrator {
         csvBuffer: result.csvBuffer,
         resultCount: result.rowCount,
         processingTimeSeconds: this.calculateProcessingTime(startTime),
+        spreadsheetUrl: result.spreadsheetUrl,
       };
 
       this.logger.info('ワークフロー実行完了', {
@@ -142,6 +232,18 @@ export class WorkflowOrchestrator {
 
         // リトライ不可なエラーの場合は即座にthrow
         if (error instanceof AIShineError && !error.retryable) {
+          throw error;
+        }
+
+        // タイムアウトエラー（504含む）はリトライしない（Dify側のタイムアウトは再試行しても失敗する可能性が高い）
+        if (error instanceof TimeoutError) {
+          this.logger.warn('タイムアウトエラーはリトライしません');
+          throw error;
+        }
+
+        // 504 Gateway Timeoutもリトライしない
+        if (error instanceof DifyAPIError && error.statusCode === 504) {
+          this.logger.warn('504 Gateway Timeoutはリトライしません');
           throw error;
         }
 
