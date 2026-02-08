@@ -153,7 +153,7 @@ class SlackNotifier:
         thread_ts: Optional[str] = None,
     ) -> bool:
         """
-        Slackにファイルをアップロード
+        Slackにファイルをアップロード（新API使用）
 
         Args:
             channel: チャンネルID
@@ -167,29 +167,55 @@ class SlackNotifier:
         """
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                # files.uploadV2 API を使用
-                data = {
-                    "channels": channel,
-                    "filename": filename,
-                    "title": title or filename,
+                # Step 1: アップロードURL取得
+                get_url_response = await client.post(
+                    "https://slack.com/api/files.getUploadURLExternal",
+                    headers={"Authorization": f"Bearer {self.bot_token}"},
+                    data={
+                        "filename": filename,
+                        "length": len(file_content),
+                    },
+                )
+                get_url_result = get_url_response.json()
+
+                if not get_url_result.get("ok"):
+                    logger.error(f"Slack URL取得エラー: {get_url_result.get('error', 'unknown')}")
+                    return False
+
+                upload_url = get_url_result["upload_url"]
+                file_id = get_url_result["file_id"]
+
+                # Step 2: ファイルをアップロード
+                upload_response = await client.post(
+                    upload_url,
+                    content=file_content,
+                    headers={"Content-Type": "text/csv"},
+                )
+
+                if upload_response.status_code != 200:
+                    logger.error(f"Slackファイルアップロードエラー: {upload_response.status_code}")
+                    return False
+
+                # Step 3: アップロード完了を通知
+                complete_data = {
+                    "files": [{"id": file_id, "title": title or filename}],
+                    "channel_id": channel,
                 }
                 if thread_ts:
-                    data["thread_ts"] = thread_ts
+                    complete_data["thread_ts"] = thread_ts
 
-                files = {
-                    "file": (filename, file_content, "text/csv"),
-                }
-
-                response = await client.post(
-                    "https://slack.com/api/files.upload",
-                    headers={"Authorization": f"Bearer {self.bot_token}"},
-                    data=data,
-                    files=files,
+                complete_response = await client.post(
+                    "https://slack.com/api/files.completeUploadExternal",
+                    headers={
+                        "Authorization": f"Bearer {self.bot_token}",
+                        "Content-Type": "application/json",
+                    },
+                    json=complete_data,
                 )
-                result = response.json()
+                complete_result = complete_response.json()
 
-                if not result.get("ok"):
-                    logger.error(f"Slackファイルアップロードエラー: {result.get('error', 'unknown')}")
+                if not complete_result.get("ok"):
+                    logger.error(f"Slackアップロード完了エラー: {complete_result.get('error', 'unknown')}")
                     return False
 
                 logger.info(f"Slackファイルアップロード成功: {filename}")
