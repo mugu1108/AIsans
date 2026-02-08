@@ -37,7 +37,7 @@ export class DifyClient {
     query: string,
     targetCount: number = 30,
     userId: string = 'slack-user'
-  ): Promise<{ csvBuffer: Buffer; rowCount: number }> {
+  ): Promise<{ csvBuffer: Buffer; rowCount: number; spreadsheetUrl?: string }> {
     this.logger.debug('Dify Workflowを呼び出し中', { query, targetCount, userId });
 
     try {
@@ -93,6 +93,7 @@ export class DifyClient {
       return {
         csvBuffer,
         rowCount,
+        spreadsheetUrl: undefined,
       };
     } catch (error) {
       this.handleError(error, query);
