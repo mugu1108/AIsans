@@ -137,3 +137,36 @@ export interface DifyErrorResponse {
    */
   status: number;
 }
+
+/**
+ * Difyストリーミングイベント（workflow_finished）
+ */
+export interface DifyWorkflowFinishedEvent {
+  event: 'workflow_finished';
+  workflow_run_id: string;
+  task_id: string;
+  data: {
+    id: string;
+    workflow_id: string;
+    status: 'succeeded' | 'failed' | 'stopped';
+    outputs?: {
+      summary?: string;
+      spreadsheet_url?: string;
+    };
+    error?: string;
+    elapsed_time: number;
+    total_tokens: number;
+    created_at: number;
+    finished_at: number;
+  };
+}
+
+/**
+ * Difyストリーミングイベント（その他）
+ */
+export interface DifyStreamingEvent {
+  event: 'workflow_started' | 'node_started' | 'node_finished' | 'text_chunk' | 'error';
+  workflow_run_id?: string;
+  task_id?: string;
+  data?: unknown;
+}
