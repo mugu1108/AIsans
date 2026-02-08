@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from scraper import scrape_companies, is_excluded_domain, extract_domain
 from config.settings import get_settings
 from models.search import SearchRequest, SearchJobResponse, JobStatusResponse
-from services.serper import SerperClient, generate_search_queries
+from services.serper import SerperClient, generate_diverse_queries
 from services.gas_client import GASClient
 from services.job_manager import get_job_manager
 from services.search_workflow import run_workflow_async
@@ -217,7 +217,7 @@ async def search_sync(request: SearchSyncRequest):
     logger.info(f"既存ドメイン: {len(existing_domains)}件")
 
     # STEP 2: 検索クエリ生成
-    queries = request.queries or generate_search_queries(request.search_keyword)
+    queries = request.queries or generate_diverse_queries(request.search_keyword)
     logger.info(f"検索クエリ {len(queries)}件")
 
     # STEP 3: Serper検索
@@ -316,7 +316,7 @@ async def start_search(request: SearchRequest, background_tasks: BackgroundTasks
         )
 
     # クエリ生成（指定がなければ自動生成）
-    queries = request.queries or generate_search_queries(request.search_keyword)
+    queries = request.queries or generate_diverse_queries(request.search_keyword)
 
     # ジョブ作成
     job_manager = get_job_manager()

@@ -14,15 +14,72 @@ from models.search import CompanyData
 logger = logging.getLogger(__name__)
 
 
-# クエリ生成パターン（企業公式サイトを見つけやすいクエリ）
-# シンプルなクエリで企業サイトを検索
-QUERY_PATTERNS = [
-    "{keyword} 株式会社",
-    "{keyword} 有限会社",
-    "{keyword} 合同会社",
-    "{keyword} site:co.jp",
-    "{keyword} site:or.jp",
-]
+# クエリ生成パターン（Difyワークフローを参考に多様なクエリを生成）
+# A. 業種の細分化、B. 地域の細分化、C. 企業規模、D. リスト系、E. 公式サイト系
+def generate_diverse_queries(keyword: str) -> list[str]:
+    """
+    キーワードから多様な検索クエリを生成（Difyワークフロー準拠）
+    25〜30個のクエリを生成
+    """
+    queries = []
+
+    # 基本パターン
+    base_patterns = [
+        "{keyword} 株式会社",
+        "{keyword} 有限会社",
+        "{keyword} 合同会社",
+        "{keyword} 企業",
+        "{keyword} 会社",
+    ]
+
+    # 業種の別表現（IT企業の場合の例）
+    industry_variants = [
+        "{keyword} システム開発",
+        "{keyword} Web制作",
+        "{keyword} ソフトウェア",
+        "{keyword} アプリ開発",
+        "{keyword} ソリューション",
+    ]
+
+    # リスト・一覧系
+    list_patterns = [
+        "{keyword} 企業一覧",
+        "{keyword} 会社一覧",
+        "{keyword} 企業リスト",
+        "{keyword} おすすめ企業",
+        "{keyword} 優良企業",
+    ]
+
+    # 公式サイト特化
+    official_patterns = [
+        "{keyword} site:co.jp",
+        "{keyword} 本社",
+        "{keyword} 会社概要",
+        "{keyword} 公式",
+    ]
+
+    # 協会・団体系
+    association_patterns = [
+        "{keyword} 協会 会員",
+        "{keyword} 連盟",
+    ]
+
+    all_patterns = (
+        base_patterns +
+        industry_variants +
+        list_patterns +
+        official_patterns +
+        association_patterns
+    )
+
+    for pattern in all_patterns:
+        queries.append(pattern.format(keyword=keyword))
+
+    return queries
+
+
+# 除外ドメインサフィックス（政府・自治体・教育機関）
+EXCLUDE_SUFFIXES = ['.go.jp', '.lg.jp', '.ed.jp', '.ac.jp']
 
 # 除外タイトルパターン（まとめ記事、ランキング記事等を除外）
 EXCLUDE_TITLE_PATTERNS = [
@@ -74,20 +131,6 @@ EXCLUDE_DOMAINS = [
 ]
 
 
-def generate_search_queries(keyword: str) -> list[str]:
-    """
-    キーワードから検索クエリを生成
-
-    Args:
-        keyword: 検索キーワード（例: "東京 IT企業"）
-
-    Returns:
-        生成されたクエリのリスト
-    """
-    queries = []
-    for pattern in QUERY_PATTERNS:
-        queries.append(pattern.format(keyword=keyword))
-    return queries
 
 
 def extract_domain(url: str) -> str:
@@ -100,9 +143,15 @@ def extract_domain(url: str) -> str:
 
 
 def is_excluded_domain(domain: str) -> bool:
-    """除外ドメインかチェック"""
+    """除外ドメインかチェック（ドメインリスト + サフィックス）"""
     domain_lower = domain.lower()
-    return any(excluded in domain_lower for excluded in EXCLUDE_DOMAINS)
+    # 除外ドメインリストチェック
+    if any(excluded in domain_lower for excluded in EXCLUDE_DOMAINS):
+        return True
+    # 除外サフィックスチェック（政府・自治体・教育機関）
+    if any(domain_lower.endswith(suffix) for suffix in EXCLUDE_SUFFIXES):
+        return True
+    return False
 
 
 def is_excluded_title(title: str) -> bool:
