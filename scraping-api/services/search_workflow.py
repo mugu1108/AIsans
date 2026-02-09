@@ -1,6 +1,10 @@
 """
 検索ワークフローモジュール
 検索→クレンジング→リトライ→スクレイピング→保存→通知の一連の処理を実行
+
+v2改善:
+- スクレイピング脱落バッファ（15%上乗せ）
+- リトライ時に汎用クエリ生成（業種・地域自動判定）
 """
 
 import asyncio
@@ -11,7 +15,7 @@ from datetime import datetime
 from typing import Optional
 
 from models.job import Job, JobStatus
-from services.serper import SerperClient, generate_retry_queries
+from services.serper import SerperClient, generate_diverse_queries, generate_retry_queries
 from services.gas_client import GASClient
 from services.slack_notifier import SlackNotifier
 from services.job_manager import JobManager
@@ -24,9 +28,9 @@ logger = logging.getLogger(__name__)
 class SearchWorkflow:
     """検索ワークフロー実行クラス"""
 
-    # リトライ設定
-    MAX_RETRY_ROUNDS = 3  # 最大リトライ回数
-    GIVE_UP_THRESHOLD = 0.8  # 目標の80%以上取れたらリトライしない
+    MAX_RETRY_ROUNDS = 3
+    GIVE_UP_THRESHOLD = 0.8       # 目標の80%以上で打ち切り
+    SCRAPING_BUFFER = 1.15        # ★v2追加: スクレイピング脱落分15%上乗せ
 
     def __init__(
         self,
@@ -43,12 +47,7 @@ class SearchWorkflow:
         self.llm_cleanser = LLMCleanser(openai_api_key) if openai_api_key else None
 
     async def execute(self, job: Job) -> None:
-        """
-        検索ワークフローを実行
-
-        Args:
-            job: 実行するジョブ
-        """
+        """検索ワークフローを実行"""
         try:
             # ステップ1: 既存リスト取得
             job.update_status(JobStatus.SEARCHING, "既存リストを取得中...", 5)
@@ -82,16 +81,9 @@ class SearchWorkflow:
             scraped_results = await scrape_companies(companies_for_scrape)
             logger.info(f"スクレイピング完了: {len(scraped_results)}件")
 
-            # 成功した結果をフィルタ
-            successful_results = [
-                r for r in scraped_results
-                if not r.error
-            ]
-
-            # 結果を連絡先ありを先に、なしを後にソート
+            successful_results = [r for r in scraped_results if not r.error]
             successful_results.sort(key=lambda r: (0 if r.contact_url or r.phone else 1))
 
-            # フィルタ結果の詳細ログ
             with_contact = sum(1 for r in successful_results if r.contact_url or r.phone)
             without_contact = len(successful_results) - with_contact
             failed_count = len(scraped_results) - len(successful_results)
@@ -102,6 +94,11 @@ class SearchWorkflow:
                 mismatch = sum(1 for r in scraped_results if r.error == 'company_mismatch')
                 job_portal = sum(1 for r in scraped_results if r.error == 'job_portal_site')
                 logger.info(f"除外: {failed_count}件（アクセス失敗: {top_failed}件、企業名不一致: {mismatch}件、求人/ポータル: {job_portal}件）")
+
+            # ★v2: 目標数を超えた場合は切り詰め（バッファで多めに取得しているため）
+            if len(successful_results) > job.target_count:
+                successful_results = successful_results[:job.target_count]
+                logger.info(f"目標数に切り詰め: {job.target_count}件")
 
             # ステップ4: GAS保存
             job.update_status(JobStatus.SAVING, "スプレッドシートに保存中...", 80)
@@ -143,7 +140,6 @@ class SearchWorkflow:
                 contact_count=contact_count,
             )
 
-            # CSVファイルをSlackにアップロード
             if successful_results:
                 csv_content = self._generate_csv(companies_to_save)
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -175,68 +171,68 @@ class SearchWorkflow:
     # ====================================
     async def _search_with_retry(self, job: Job, existing_domains: list[str]) -> list:
         """
-        目標件数に達するまで検索→クレンジングを繰り返す
-
-        Returns:
-            クレンジング済みのCompanyDataリスト
+        目標件数に達するまで検索→クレンジングを繰り返す。
+        リトライ時は業種・地域に応じた新しいクエリを生成する。
         """
         from models.search import CompanyData
 
-        target_count = job.target_count
-        all_cleansed = []  # 累積クレンジング結果
-        used_domains = set(existing_domains)  # 重複排除用（既存 + 取得済み）
-        used_names = set()  # 企業名の重複排除用
-        used_queries = set(job.queries)  # 使用済みクエリ（リトライで同じクエリを使わない）
+        # ★v2: スクレイピング脱落分を見越して多めに取得
+        target_count = int(job.target_count * self.SCRAPING_BUFFER)
+        logger.info(f"検索目標: {job.target_count}件 → バッファ込み{target_count}件")
 
-        for round_num in range(1, self.MAX_RETRY_ROUNDS + 2):  # 初回 + リトライ
+        all_cleansed = []
+        used_domains = set(existing_domains)
+        used_names = set()
+        used_queries = set()
+
+        # 初回(1回) + リトライ(MAX_RETRY_ROUNDS回) = 最大4回
+        for round_num in range(1, self.MAX_RETRY_ROUNDS + 2):
             is_retry = round_num > 1
             shortage = target_count - len(all_cleansed)
 
+            # --- クエリ生成 ---
             if is_retry:
-                logger.info(f"=== リトライ {round_num - 1}/{self.MAX_RETRY_ROUNDS} === 不足: {shortage}件")
+                queries = generate_retry_queries(
+                    keyword=job.search_keyword,
+                    round_num=round_num - 1,
+                    used_queries=used_queries,
+                )
+                if not queries:
+                    logger.info("新しいクエリが生成できません。リトライ終了。")
+                    break
+
+                logger.info(f"=== リトライ {round_num - 1}/{self.MAX_RETRY_ROUNDS} === "
+                           f"不足: {shortage}件, 新クエリ: {len(queries)}個")
                 job.update_status(
                     JobStatus.SEARCHING,
-                    f"追加検索中...（{len(all_cleansed)}/{target_count}件取得済み、リトライ{round_num - 1}回目）",
+                    f"追加検索中...（{len(all_cleansed)}/{job.target_count}件取得済み、リトライ{round_num - 1}回目）",
                     15 + (round_num * 5),
                 )
                 self.job_manager.update_job(job)
             else:
+                queries = job.queries
                 job.update_status(JobStatus.SEARCHING, "企業を検索中...", 15)
                 self.job_manager.update_job(job)
 
-            # --- クエリ選択 ---
-            if is_retry:
-                # リトライ時: 新しいクエリを生成
-                queries = generate_retry_queries(
-                    keyword=job.search_keyword,
-                    round_num=round_num - 1,  # 1, 2, 3...
-                    used_queries=used_queries,
-                )
-                if not queries:
-                    logger.info(f"新しいクエリが生成できません。リトライ終了。")
-                    break
-                used_queries.update(queries)
-            else:
-                # 初回: 元のクエリを使用
-                queries = job.queries
+            used_queries.update(queries)
 
             # --- 検索 ---
-            # リトライ時は不足分より多めに検索（クレンジングで減る分を見越す）
+            # リトライ時は不足分の2倍を目標（クレンジングで減る分を見越す）
             search_target = shortage * 2 if is_retry else target_count
 
             companies = await self.serper.search_companies(
                 queries=queries,
                 target_count=search_target,
-                existing_domains=list(used_domains),
+                existing_domains=used_domains,
             )
-            logger.info(f"ラウンド{round_num} 検索結果: {len(companies)}件（クエリ数: {len(queries)}）")
+            logger.info(f"ラウンド{round_num} 検索結果: {len(companies)}件")
 
             if not companies:
                 if is_retry:
-                    logger.info(f"追加検索結果が0件。リトライ終了。")
+                    logger.info("追加検索結果が0件。リトライ終了。")
                     break
                 else:
-                    return []  # 初回で0件なら終了
+                    return []
 
             # --- LLMクレンジング ---
             if self.llm_cleanser:
@@ -257,7 +253,6 @@ class SearchWorkflow:
                     logger.info(f"ラウンド{round_num} クレンジング: {len(companies)}件 → {len(cleansed)}件")
                 except Exception as e:
                     logger.warning(f"LLMクレンジングエラー（スキップ）: {e}")
-                    # クレンジング失敗時はそのまま使う
                     cleansed = [
                         {"company_name": c.company_name, "url": c.url, "domain": c.domain}
                         for c in companies
@@ -275,10 +270,8 @@ class SearchWorkflow:
                 domain = c.get("domain", "")
                 name = c.get("company_name", "")
 
-                # ドメイン重複チェック
                 if domain and domain in used_domains:
                     continue
-                # 企業名重複チェック
                 if name and name in used_names:
                     continue
 
@@ -294,46 +287,40 @@ class SearchWorkflow:
                     used_names.add(name)
                 new_count += 1
 
-            logger.info(f"ラウンド{round_num} 新規追加: {new_count}件 → 累積: {len(all_cleansed)}件（目標: {target_count}件）")
+            logger.info(f"ラウンド{round_num} 新規追加: {new_count}件 → "
+                        f"累積: {len(all_cleansed)}件（目標: {target_count}件）")
 
             # --- 目標達成チェック ---
             if len(all_cleansed) >= target_count:
                 logger.info(f"目標達成！ {len(all_cleansed)}/{target_count}件")
                 break
 
-            # --- リトライ判定 ---
+            # --- リトライ打ち切り判定 ---
             if round_num > self.MAX_RETRY_ROUNDS:
                 logger.info(f"最大リトライ回数到達。{len(all_cleansed)}/{target_count}件で終了。")
                 break
 
-            # 新規追加が0件なら、これ以上検索しても見つからない
             if new_count == 0:
                 logger.info(f"新規企業が見つかりません。{len(all_cleansed)}/{target_count}件で終了。")
                 break
 
-            # 目標の80%以上取れていて、追加が少ない場合もリトライしない
             if len(all_cleansed) >= target_count * self.GIVE_UP_THRESHOLD and new_count < 3:
-                logger.info(f"目標の80%以上達成（{len(all_cleansed)}/{target_count}件）、追加が少ないためリトライ終了。")
+                logger.info(f"目標の80%以上達成、追加が少ないためリトライ終了。")
                 break
 
-        # 目標数を超えた場合はrelevance_scoreの高い順に切り詰め
+        # 目標数を超えた場合は切り詰め
         if len(all_cleansed) > target_count:
-            # relevance_scoreがある場合はそれでソート（なければ元の順序を維持）
             all_cleansed = all_cleansed[:target_count]
-            logger.info(f"目標数に切り詰め: {target_count}件")
+            logger.info(f"バッファ目標に切り詰め: {target_count}件")
 
-        total_rounds = min(round_num, self.MAX_RETRY_ROUNDS + 1)
-        logger.info(f"検索+クレンジング完了: {len(all_cleansed)}件（{total_rounds}ラウンド）")
-
+        logger.info(f"検索+クレンジング完了: {len(all_cleansed)}件（{round_num}ラウンド）")
         return all_cleansed
 
     def _generate_csv(self, companies: list[dict]) -> bytes:
         """企業データからCSVを生成"""
         output = io.StringIO()
         writer = csv.writer(output)
-
         writer.writerow(["企業名", "URL", "お問い合わせURL", "電話番号", "ドメイン"])
-
         for company in companies:
             writer.writerow([
                 company.get("company_name", ""),
@@ -342,7 +329,6 @@ class SearchWorkflow:
                 company.get("phone", ""),
                 company.get("domain", ""),
             ])
-
         return output.getvalue().encode("utf-8-sig")
 
 
@@ -362,5 +348,4 @@ async def run_workflow_async(
         job_manager=job_manager,
         openai_api_key=openai_api_key,
     )
-
     await workflow.execute(job)
