@@ -105,7 +105,8 @@ class SearchWorkflow:
                 # 失敗した企業の内訳
                 top_failed = sum(1 for r in scraped_results if r.error == 'top_page_failed')
                 mismatch = sum(1 for r in scraped_results if r.error == 'company_mismatch')
-                logger.info(f"除外: {failed_count}件（アクセス失敗: {top_failed}件、企業名不一致: {mismatch}件）")
+                job_portal = sum(1 for r in scraped_results if r.error == 'job_portal_site')
+                logger.info(f"除外: {failed_count}件（アクセス失敗: {top_failed}件、企業名不一致: {mismatch}件、求人/ポータル: {job_portal}件）")
 
             # ステップ4: GAS保存
             job.update_status(JobStatus.SAVING, "スプレッドシートに保存中...", 80)

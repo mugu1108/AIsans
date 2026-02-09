@@ -81,19 +81,35 @@ def generate_diverse_queries(keyword: str) -> list[str]:
 # 除外ドメインサフィックス（政府・自治体・教育機関）
 EXCLUDE_SUFFIXES = ['.go.jp', '.lg.jp', '.ed.jp', '.ac.jp']
 
-# 除外タイトルパターン（まとめ記事、ランキング記事等を除外）
+# 除外タイトルパターン（まとめ記事、ランキング記事、求人サイト等を除外）
 EXCLUDE_TITLE_PATTERNS = [
+    # まとめ・ランキング系
     "ランキング", "一覧", "比較", "おすすめ", "選び方", "まとめ",
     "厳選", "徹底比較", "口コミ", "評判", "人気", "top", "best",
     "選", "社を紹介", "社まとめ", "件を紹介", "企業を紹介",
+    # 求人・転職系
     "転職", "求人", "採用情報", "年収", "就職", "インターン",
+    "応援サイト", "お仕事", "仕事を探す", "仕事探し", "会員登録",
+    "派遣", "正社員", "アルバイト", "パート", "工場求人",
+    "製造求人", "軽作業", "工場で働く", "ものづくり企業で働く",
+    # ポータル・検索系
+    "企業検索", "会社検索", "法人検索", "企業データベース",
 ]
 
 # 除外ドメイン（scraper.pyと共通）
 EXCLUDE_DOMAINS = [
-    # 求人サイト
+    # 求人サイト（主要）
     'indeed.com', 'indeed.jp', 'mynavi.jp', 'rikunabi.com', 'doda.jp',
     'en-japan.com', 'baitoru.com', 'careerconnection.jp', 'jobchange.jp', 'hatarako.net',
+    # 求人サイト（工場・製造系）
+    'tama-monozukuri.jp', 'job-gear.jp', 'e-aidem.com', 'hellowork.mhlw.go.jp',
+    'persol-factorypartners.co.jp', 'factory-job.jp', 'kojo-job.jp', 'kojo-navi.jp',
+    'job-list.net', 'monozukuri-matching.jp', 'jobpaper.net', 'nikkan.co.jp',
+    # 求人サイト（IT・クリエイティブ系）
+    'findjob.jp', 'forkwell.com', 'geekly.co.jp', 'paiza.jp', 'levtech.jp',
+    # 派遣・人材系
+    'tempstaff.co.jp', 'pasona.co.jp', 'manpowergroup.jp', 'adecco.co.jp',
+    'staffservice.co.jp', 'haken.en-japan.com',
     # ニュース・メディア
     'yahoo.co.jp', 'news.yahoo.co.jp', 'nikkei.com', 'asahi.com', 'yomiuri.co.jp',
     'mainichi.jp', 'sankei.com',

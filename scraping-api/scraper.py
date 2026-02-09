@@ -98,6 +98,21 @@ CORPORATE_SUFFIXES = [
     'Corporation', 'Company', 'Co.'
 ]
 
+# 求人・ポータルサイト検出パターン（HTMLコンテンツから検出）
+JOB_SITE_PATTERNS = [
+    # 求人サイト特有のUI要素
+    'お仕事を探す', '仕事を探す', '求人を探す', '求人検索',
+    '会員登録', 'ログインして', '無料登録',
+    '応募する', '応募画面', 'エントリー',
+    # 求人サイト特有の表現
+    '派遣求人', '正社員求人', 'アルバイト求人',
+    '就職支援', '転職支援', '就職応援', '雇用応援',
+    '求人情報を見る', '求人一覧', 'お仕事一覧',
+    # まとめサイト特有の表現
+    '企業を比較', '企業を紹介', '会社を紹介',
+    'おすすめの企業', 'おすすめ企業',
+]
+
 # HTTPヘッダー
 HTTP_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -157,6 +172,25 @@ def is_excluded_domain(domain: str) -> bool:
     return any(excluded in domain_lower for excluded in EXCLUDE_DOMAINS)
 
 
+def is_job_or_portal_site(html: str) -> bool:
+    """
+    HTMLコンテンツから求人サイト・ポータルサイトかどうかを判定
+
+    複数のパターンが一致した場合にTrueを返す（誤検出を防ぐ）
+    """
+    html_lower = html.lower()
+    match_count = 0
+
+    for pattern in JOB_SITE_PATTERNS:
+        if pattern.lower() in html_lower:
+            match_count += 1
+            # 3つ以上のパターンに一致したら求人サイトと判定
+            if match_count >= 3:
+                return True
+
+    return False
+
+
 def resolve_url(base_url: str, relative_url: str) -> str:
     """相対URLを絶対URLに変換"""
     if relative_url.startswith('http'):
@@ -204,14 +238,30 @@ def extract_company_name_from_html(html: str, fallback_name: str) -> str:
         '会社案内', '会社概要', '企業情報', '事業内容', '企業概要',
         'コーポレートサイト', '公式サイト', '公式ホームページ',
         'Official Site', 'Corporate Site', 'Welcome',
+        # 求人・ポータルサイト関連
+        '求人', '転職', '就職', '採用', '応援サイト', 'お仕事',
+        '企業一覧', '会社一覧', 'ランキング', 'おすすめ', 'まとめ',
+        '派遣', 'アルバイト', 'パート', '工場', '製造',
+    ]
+
+    # 無効な名前が「含まれる」場合に除外するパターン
+    invalid_contains = [
+        '求人', '転職', '就職', '採用', '応援サイト', 'お仕事',
+        'ランキング', 'おすすめ', 'まとめ', '派遣',
+        '企業一覧', '会社一覧', '企業を紹介',
     ]
 
     def is_valid_name(name: str) -> bool:
         if not name or len(name) < 2:
             return False
         name_lower = name.lower().strip()
+        # 完全一致チェック
         for invalid in invalid_names:
             if name_lower == invalid.lower():
+                return False
+        # 部分一致チェック（求人サイト・まとめサイト系）
+        for pattern in invalid_contains:
+            if pattern in name_lower:
                 return False
         # 長すぎる名前は無効（50文字超）
         if len(name) > 50:
@@ -597,6 +647,18 @@ async def scrape_company(
             phone='',
             domain=domain,
             error='top_page_failed'
+        )
+
+    # STEP 1.5: 求人サイト・ポータルサイト検出
+    if is_job_or_portal_site(top_page_html):
+        logger.warning(f"求人/ポータルサイト検出: {company_name} ({base_url})")
+        return ScrapeResult(
+            company_name=company_name,
+            base_url=base_url,
+            contact_url='',
+            phone='',
+            domain=domain,
+            error='job_portal_site'
         )
 
     # STEP 2: Webサイトから実際の企業名を抽出
