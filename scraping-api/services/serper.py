@@ -145,6 +145,12 @@ EXCLUDE_DOMAINS = [
     'seleck.cc', 'leverages.jp', 'aippear.net', 'techcrunch.com',
     'bridge-salon.jp', 'it-trend.jp', 'aspic.or.jp', 'meetsmore.com',
     'proengineer.internous.co.jp', 'crowdworks.jp', 'lancers.jp',
+    # 追加: 比較・マッチングサイト（〇〇幹事系）
+    'biz.ne.jp', 'web-kanji.com', 'system-kanji.com', 'video-kanji.com',
+    'app-kanji.com', 'meibo-kanji.com', 'kanji-inc.co.jp',
+    'bizitora.jp', 'system-dev-navi.com', 'emeao.jp', 'hnavi.co.jp',
+    'hacchu-navi.com', 'rekaiz.com', '発注ナビ.com', 'b-pos.jp',
+    'compareit.jp', 'itpropartners.com', 'pro-d-use.jp',
 ]
 
 
