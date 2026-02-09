@@ -1,6 +1,11 @@
 """
 LLM企業名クレンジングモジュール
-OpenAI GPT-4o-miniを使用して検索結果のタイトルから正しい企業名を抽出
+Difyワークフロー仕様に完全準拠
+
+OpenAI GPT-4o-miniを使用して:
+1. 検索結果から有効な企業情報を抽出・正規化
+2. 企業HPではないサイト（比較サイト、イベント、協会等）を除外
+3. 関連性スコアリング
 """
 
 import logging
@@ -12,16 +17,79 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+# Dify仕様のシステムプロンプト
+SYSTEM_PROMPT = """あなたは企業データクレンジングの専門家です。
+
+## タスク
+検索結果から「企業の公式HP」のみを抽出・正規化してください。
+企業HPではないサイトは必ず除外してください。
+
+## 処理ルール
+
+### 1. 企業名の正規化
+検索結果のtitleから正しい企業名を抽出：
+- 「株式会社〇〇｜公式サイト」→「株式会社〇〇」
+- 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」
+- 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）
+
+### 2. 必ず除外するもの（企業HPではない）
+以下は**絶対に含めないでください**：
+
+**比較・マッチングサイト**
+- 「〇〇比較」「比較ビズ」「一括見積もり」などの比較サイト
+- 企業紹介・マッチングサービス
+
+**イベント・展示会サイト**
+- 「〇〇展」「〇〇EXPO」「CEATEC」などのイベントサイト
+- 展示会・カンファレンスのサイト
+
+**リスト・名簿販売サイト**
+- 「企業リスト」「法人名簿」「リストマーケット」などのリスト販売
+
+**業界団体・協会**
+- 「〇〇協会」「〇〇連盟」「〇〇連合会」「〇〇工業会」
+- 商工会議所、業界団体
+
+**施設・地名**
+- 「〇〇工場」のみの施設名
+- 地名のみ（「横山町・馬喰町」など）
+- 「〇〇センター」などの施設名
+
+**その他除外**
+- 求人サイト（indeed, mynavi, rikunabi, doda等）
+- SNS（twitter, facebook, instagram, youtube等）
+- ニュースサイト（yahoo, nikkei, asahi等）
+- Wikipedia
+- 企業情報サイト（baseconnect, wantedly, openwork等）
+- 政府・自治体サイト（.go.jp, .lg.jp）
+- ブログ記事、個人サイト
+- 企業名が全く抽出できないもの
+- キャッチフレーズのみ（「地域とともに」など）
+- 不完全な名前（「カンパニー」「継手 バルブ 製造・販売」など）
+
+### 3. 含めるもの（企業HP）
+以下のみを含めてください：
+- 株式会社〇〇、〇〇株式会社
+- 有限会社〇〇、〇〇有限会社
+- 合同会社〇〇
+- 〇〇Inc.、〇〇Corp.などの企業
+
+### 4. 関連性判定
+検索キーワードに対して関連性が低い企業も除外：
+- 検索キーワードの業種・地域と明らかに無関係な企業"""
+
+
 class LLMCleanser:
     """
-    LLMを使用した企業名クレンジング
+    LLMを使用した企業データクレンジング（Dify仕様準拠）
 
-    検索結果のタイトル（例: "株式会社〇〇｜公式サイト"）から
-    正しい企業名（例: "株式会社〇〇"）を抽出する
+    - 企業名の正規化
+    - 非企業サイトの除外（比較サイト、イベント、協会等）
+    - 関連性スコアリング
     """
 
     API_URL = "https://api.openai.com/v1/chat/completions"
-    MODEL = "gpt-4o-mini"  # コスト効率重視
+    MODEL = "gpt-4o-mini"
 
     def __init__(self, api_key: str):
         self.api_key = api_key
@@ -30,20 +98,22 @@ class LLMCleanser:
             "Content-Type": "application/json",
         }
 
-    async def cleanse_company_names(
+    async def cleanse_companies(
         self,
         companies: list[dict],
-        batch_size: int = 20,
+        search_keyword: str,
+        batch_size: int = 30,
     ) -> list[dict]:
         """
-        企業名をLLMでクレンジング
+        企業リストをLLMでクレンジング（Dify仕様準拠）
 
         Args:
-            companies: [{"company_name": "...", "url": "...", ...}, ...]
+            companies: [{"company_name": "...", "url": "...", "domain": "..."}, ...]
+            search_keyword: 検索キーワード（関連性判定に使用）
             batch_size: 一度に処理する件数
 
         Returns:
-            クレンジング済みの企業リスト
+            クレンジング済みの企業リスト（無効な企業は除外済み）
         """
         if not self.api_key:
             logger.warning("OpenAI APIキーが設定されていません。クレンジングをスキップします。")
@@ -52,50 +122,59 @@ class LLMCleanser:
         if not companies:
             return companies
 
-        logger.info(f"LLMクレンジング開始: {len(companies)}件")
+        logger.info(f"LLMクレンジング開始: {len(companies)}件（キーワード: {search_keyword}）")
 
         # バッチ処理
-        cleansed_companies = []
+        all_cleansed = []
         for i in range(0, len(companies), batch_size):
             batch = companies[i:i + batch_size]
             try:
-                cleansed_batch = await self._cleanse_batch(batch)
-                cleansed_companies.extend(cleansed_batch)
-                logger.debug(f"バッチ {i // batch_size + 1} 完了: {len(cleansed_batch)}件")
+                cleansed_batch = await self._cleanse_batch(batch, search_keyword)
+                all_cleansed.extend(cleansed_batch)
+                logger.debug(f"バッチ {i // batch_size + 1} 完了: {len(batch)}件 → {len(cleansed_batch)}件")
             except Exception as e:
                 logger.warning(f"バッチ {i // batch_size + 1} でエラー: {e}")
-                # エラー時は元のデータをそのまま使用
-                cleansed_companies.extend(batch)
+                # エラー時は元のデータをそのまま使用（安全側に倒す）
+                all_cleansed.extend(batch)
 
-        logger.info(f"LLMクレンジング完了: {len(cleansed_companies)}件")
-        return cleansed_companies
+        # 除外された件数をログ
+        excluded_count = len(companies) - len(all_cleansed)
+        logger.info(f"LLMクレンジング完了: {len(companies)}件 → {len(all_cleansed)}件（{excluded_count}件除外）")
 
-    async def _cleanse_batch(self, batch: list[dict]) -> list[dict]:
+        return all_cleansed
+
+    async def _cleanse_batch(
+        self,
+        batch: list[dict],
+        search_keyword: str,
+    ) -> list[dict]:
         """
         バッチ単位でクレンジング
         """
-        # プロンプト作成
-        titles = [c.get("company_name", "") for c in batch]
-        prompt = self._create_prompt(titles)
+        # 入力データを整形
+        input_data = []
+        for i, c in enumerate(batch):
+            input_data.append({
+                "index": i + 1,
+                "title": c.get("company_name", ""),
+                "url": c.get("url", ""),
+                "domain": c.get("domain", ""),
+            })
+
+        user_prompt = self._create_user_prompt(input_data, search_keyword)
 
         # API呼び出し
         payload = {
             "model": self.MODEL,
             "messages": [
-                {
-                    "role": "system",
-                    "content": "あなたは企業名抽出の専門家です。検索結果のタイトルから正確な企業名のみを抽出してください。"
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt}
             ],
-            "temperature": 0,
+            "temperature": 0.2,
             "response_format": {"type": "json_object"}
         }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 self.API_URL,
                 headers=self.headers,
@@ -107,57 +186,86 @@ class LLMCleanser:
         # レスポンス解析
         content = data["choices"][0]["message"]["content"]
         result = json.loads(content)
-        cleansed_names = result.get("companies", [])
+        valid_companies = result.get("valid_companies", [])
 
-        # 結果をマージ
-        cleansed_batch = []
-        for i, company in enumerate(batch):
-            new_company = company.copy()
-            if i < len(cleansed_names) and cleansed_names[i]:
-                original = company.get("company_name", "")
-                cleansed = cleansed_names[i]
-                if cleansed != original:
-                    logger.debug(f"企業名変換: {original} → {cleansed}")
-                new_company["company_name"] = cleansed
-            cleansed_batch.append(new_company)
+        # 結果をマージ（有効な企業のみ返す）
+        cleansed = []
+        for vc in valid_companies:
+            idx = vc.get("index", 0) - 1
+            if 0 <= idx < len(batch):
+                original = batch[idx]
+                new_company = original.copy()
+                # 正規化された企業名を使用
+                new_name = vc.get("company_name", "")
+                if new_name:
+                    if new_name != original.get("company_name", ""):
+                        logger.debug(f"企業名正規化: {original.get('company_name', '')} → {new_name}")
+                    new_company["company_name"] = new_name
+                    cleansed.append(new_company)
 
-        return cleansed_batch
+        return cleansed
 
-    def _create_prompt(self, titles: list[str]) -> str:
+    def _create_user_prompt(
+        self,
+        input_data: list[dict],
+        search_keyword: str,
+    ) -> str:
         """
-        クレンジング用プロンプトを作成
+        ユーザープロンプトを作成
         """
-        titles_text = "\n".join([f"{i+1}. {title}" for i, title in enumerate(titles)])
+        data_json = json.dumps(input_data, ensure_ascii=False, indent=2)
 
-        return f"""以下の検索結果タイトルから、正確な企業名のみを抽出してください。
+        return f"""## 検索キーワード
+{search_keyword}
 
-【ルール】
-1. 「株式会社〇〇」「〇〇株式会社」「有限会社〇〇」「合同会社〇〇」の形式で抽出
-2. 「｜公式サイト」「- 会社概要」などの余分な部分は除去
-3. 「東京の」「おすすめ」などの修飾語は除去
-4. 求人サイト・まとめサイトの場合は空文字を返す
-5. 企業名が特定できない場合は空文字を返す
+## 検索結果データ
+{data_json}
 
-【入力タイトル】
-{titles_text}
+## 指示
+上記の検索結果から、「企業の公式HP」のみを抽出してください。
+企業HPではないサイト（比較サイト、イベント、協会、リスト販売等）は除外してください。
 
-【出力形式】
-JSON形式で、以下のように番号順に企業名を配列で返してください：
-{{"companies": ["株式会社〇〇", "〇〇有限会社", "", ...]}}
+## 出力形式（JSON）
+{{
+  "valid_companies": [
+    {{
+      "index": 1,
+      "company_name": "株式会社〇〇",
+      "reason": "製造業の企業HP"
+    }},
+    ...
+  ],
+  "excluded": [
+    {{
+      "index": 2,
+      "reason": "比較サイトのため除外"
+    }},
+    ...
+  ],
+  "summary": {{
+    "input_count": {len(input_data)},
+    "valid_count": 5,
+    "excluded_count": 3
+  }}
+}}
 
-空文字は企業名が抽出できなかった場合です。"""
+valid_companiesには企業HPのみを含めてください。
+indexは入力データの番号と一致させてください。"""
 
 
+# 後方互換性のための旧インターフェース
 async def cleanse_company_names(
     api_key: str,
     companies: list[dict],
+    search_keyword: str = "",
 ) -> list[dict]:
     """
-    企業名クレンジングのヘルパー関数
+    企業名クレンジングのヘルパー関数（後方互換性用）
 
     Args:
         api_key: OpenAI APIキー
         companies: 企業リスト
+        search_keyword: 検索キーワード
 
     Returns:
         クレンジング済みの企業リスト
@@ -166,4 +274,4 @@ async def cleanse_company_names(
         return companies
 
     cleanser = LLMCleanser(api_key)
-    return await cleanser.cleanse_company_names(companies)
+    return await cleanser.cleanse_companies(companies, search_keyword)

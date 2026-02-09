@@ -238,22 +238,33 @@ async def search_sync(request: SearchSyncRequest):
             message="検索結果が0件でした。キーワードを変更してお試しください。",
         )
 
-    # STEP 3.5: LLMクレンジング（企業名正規化）
+    # STEP 3.5: LLMクレンジング（企業名正規化＋非企業サイト除外）
     if settings.openai_api_key:
         from services.llm_cleanser import LLMCleanser
+        from models.search import CompanyData
         cleanser = LLMCleanser(settings.openai_api_key)
         companies_dict = [
             {"company_name": c.company_name, "url": c.url, "domain": c.domain}
             for c in companies
         ]
         try:
-            cleansed = await cleanser.cleanse_company_names(companies_dict)
-            for i, c in enumerate(companies):
-                if i < len(cleansed):
-                    new_name = cleansed[i].get("company_name", "")
-                    if new_name and new_name != c.company_name:
-                        c.company_name = new_name
-            logger.info(f"LLMクレンジング完了: {len(companies)}件")
+            # Dify仕様準拠: 企業HP以外を除外し、企業名を正規化
+            cleansed = await cleanser.cleanse_companies(
+                companies_dict,
+                search_keyword=request.search_keyword,
+            )
+            original_count = len(companies)
+            # クレンジング結果でcompaniesを更新（有効な企業のみ残る）
+            companies = [
+                CompanyData(
+                    company_name=c["company_name"],
+                    url=c["url"],
+                    domain=c["domain"],
+                )
+                for c in cleansed
+            ]
+            excluded_count = original_count - len(companies)
+            logger.info(f"LLMクレンジング完了: {original_count}件 → {len(companies)}件（{excluded_count}件除外）")
         except Exception as e:
             logger.warning(f"LLMクレンジングエラー（スキップ）: {e}")
 

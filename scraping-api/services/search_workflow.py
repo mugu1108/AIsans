@@ -74,9 +74,9 @@ class SearchWorkflow:
                 )
                 return
 
-            # ステップ2.5: LLMクレンジング（企業名の正規化）
+            # ステップ2.5: LLMクレンジング（企業名正規化＋非企業サイト除外）
             if self.llm_cleanser:
-                job.update_status(JobStatus.SEARCHING, "企業名をクレンジング中...", 25)
+                job.update_status(JobStatus.SEARCHING, "企業データをクレンジング中...", 25)
                 self.job_manager.update_job(job)
 
                 companies_dict = [
@@ -85,15 +85,24 @@ class SearchWorkflow:
                 ]
 
                 try:
-                    cleansed = await self.llm_cleanser.cleanse_company_names(companies_dict)
-                    # クレンジング結果を反映
-                    for i, c in enumerate(companies):
-                        if i < len(cleansed):
-                            new_name = cleansed[i].get("company_name", "")
-                            if new_name and new_name != c.company_name:
-                                logger.debug(f"企業名クレンジング: {c.company_name} → {new_name}")
-                                c.company_name = new_name
-                    logger.info(f"LLMクレンジング完了: {len(companies)}件")
+                    # Dify仕様準拠: 企業HP以外を除外し、企業名を正規化
+                    cleansed = await self.llm_cleanser.cleanse_companies(
+                        companies_dict,
+                        search_keyword=job.search_keyword,
+                    )
+                    original_count = len(companies)
+                    # クレンジング結果でcompaniesを更新（有効な企業のみ残る）
+                    from models.search import CompanyData
+                    companies = [
+                        CompanyData(
+                            company_name=c["company_name"],
+                            url=c["url"],
+                            domain=c["domain"],
+                        )
+                        for c in cleansed
+                    ]
+                    excluded_count = original_count - len(companies)
+                    logger.info(f"LLMクレンジング完了: {original_count}件 → {len(companies)}件（{excluded_count}件除外）")
                 except Exception as e:
                     logger.warning(f"LLMクレンジングエラー（スキップ）: {e}")
 
