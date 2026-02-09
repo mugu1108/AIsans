@@ -75,12 +75,11 @@ class SearchWorkflow:
                 return
 
             # ステップ2.5: LLMクレンジング（企業名正規化＋非企業サイト除外）
+            # ステップ2.5: LLMクレンジング（企業名正規化＋非企業サイト除外）
             if self.llm_cleanser:
                 logger.info(f"LLMクレンジング開始: {len(companies)}件")
                 job.update_status(JobStatus.SEARCHING, "企業データをクレンジング中...", 25)
                 self.job_manager.update_job(job)
-            else:
-                logger.warning("LLMクレンジングスキップ: OPENAI_API_KEYが設定されていません")
 
                 companies_dict = [
                     {"company_name": c.company_name, "url": c.url, "domain": c.domain}
@@ -88,13 +87,11 @@ class SearchWorkflow:
                 ]
 
                 try:
-                    # Dify仕様準拠: 企業HP以外を除外し、企業名を正規化
                     cleansed = await self.llm_cleanser.cleanse_companies(
                         companies_dict,
                         search_keyword=job.search_keyword,
                     )
                     original_count = len(companies)
-                    # クレンジング結果でcompaniesを更新（有効な企業のみ残る）
                     from models.search import CompanyData
                     companies = [
                         CompanyData(
@@ -108,7 +105,9 @@ class SearchWorkflow:
                     logger.info(f"LLMクレンジング完了: {original_count}件 → {len(companies)}件（{excluded_count}件除外）")
                 except Exception as e:
                     logger.warning(f"LLMクレンジングエラー（スキップ）: {e}")
-
+            else:
+                logger.warning("LLMクレンジングスキップ: OPENAI_API_KEYが設定されていません")
+                
             # ステップ3: スクレイピング
             job.update_status(JobStatus.SCRAPING, f"{len(companies)}件をスクレイピング中...", 35)
             self.job_manager.update_job(job)
