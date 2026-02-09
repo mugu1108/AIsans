@@ -99,6 +99,10 @@ class SearchWorkflow:
             if len(successful_results) > job.target_count:
                 successful_results = successful_results[:job.target_count]
                 logger.info(f"目標数に切り詰め: {job.target_count}件")
+            
+            if self.llm_cleanser:
+                for r in successful_results:
+                    r.company_name = self.llm_cleanser._normalize_company_name(r.company_name)
 
             # ステップ4: GAS保存
             job.update_status(JobStatus.SAVING, "スプレッドシートに保存中...", 80)
