@@ -88,11 +88,15 @@ EXCLUDE_TITLE_PATTERNS = [
     "応援サイト", "お仕事", "仕事を探す", "仕事探し", "会員登録",
     "派遣", "正社員", "アルバイト", "パート", "工場求人",
     "製造求人", "軽作業", "工場で働く", "ものづくり企業で働く",
+    # 就活・キャリア系
+    "就活", "キャリア", "新卒", "内定", "エントリー",
     # ポータル・検索系
     "企業検索", "会社検索", "法人検索", "企業データベース",
     # 明確なまとめサイトパターン（「〇〇社を紹介」など）
     "社を紹介", "社まとめ", "件を紹介", "企業を紹介",
     "徹底比較", "口コミ", "評判",
+    # ランキング・TOP系（タイトルに含まれる場合は除外）
+    "TOP100", "TOP50", "TOP10", "ランキングTOP",
 ]
 # 注意: 「一覧」「ランキング」「おすすめ」「比較」は除外しない
 # （検索クエリ自体にこれらが含まれるため、企業HPもヒットする可能性がある）
@@ -151,6 +155,11 @@ EXCLUDE_DOMAINS = [
     'bizitora.jp', 'system-dev-navi.com', 'emeao.jp', 'hnavi.co.jp',
     'hacchu-navi.com', 'rekaiz.com', '発注ナビ.com', 'b-pos.jp',
     'compareit.jp', 'itpropartners.com', 'pro-d-use.jp',
+    # 追加: 就活・キャリア系サイト
+    'carrikatu-it.com', 'unison-career.jp', 'career-tasu.jp',
+    'job-terminal.com', 'shukatsu-mirai.com', 'onecareer.jp',
+    'goodfind.jp', 'offerbox.jp', 'digmee.jp', 'jobrass.com',
+    'rebe.jp', 'careerpark.jp', 'shukatsu-kaigi.jp',
 ]
 
 

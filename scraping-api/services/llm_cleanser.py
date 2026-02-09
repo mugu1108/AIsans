@@ -270,6 +270,10 @@ class LLMCleanser:
         if '|' in name or '｜' in name:
             return True
 
+        # 【】が含まれている（まとめ記事のタイトル）
+        if '【' in name or '】' in name:
+            return True
+
         # 「...」「…」で終わる（途中で切れている）
         if name.endswith('...') or name.endswith('…'):
             return True
@@ -278,8 +282,24 @@ class LLMCleanser:
         if re.search(r'なら$|をお探し', name):
             return True
 
-        # 「〇〇選」「厳選」「比較」「おすすめ」（まとめ記事）
+        # 「〇〇選」「厳選」「比較」「おすすめ」「ランキング」（まとめ記事）
         if re.search(r'\d+選|厳選|比較|おすすめ|ランキング', name):
+            return True
+
+        # TOP〇〇（ランキング記事）
+        if re.search(r'TOP\d+|トップ\d+', name, re.IGNORECASE):
+            return True
+
+        # 就活・キャリア系サイト名
+        if re.search(r'就活|キャリア|新卒|転職|求人|採用', name):
+            return True
+
+        # 「〇〇向け」パターン（「就活生向け」「エンジニア向け」等）
+        if re.search(r'向け', name):
+            return True
+
+        # 「！」が含まれている（キャッチコピー的なタイトル）
+        if '！' in name or '!' in name:
             return True
 
         return False
