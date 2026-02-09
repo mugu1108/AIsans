@@ -304,7 +304,7 @@ class LLMCleanser:
             pos = corporate_match.start()
             before_corporate = name[:pos]
             # 法人格の前に10文字以上の文章がある場合は異常
-            if len(before_corporate) > 10:
+            if len(before_corporate) > 20:
                 return True
             # 法人格の前に動詞的な表現がある場合は異常
             if re.search(r'する$|から$|へ$|を$|の面から$', before_corporate):
