@@ -662,10 +662,19 @@ async def scrape_company(
         )
 
     # STEP 2: Webサイトから実際の企業名を抽出
+    # ただし、元の名前に日本語の法人格が含まれている場合は上書きしない
+    # （LLMクレンジングで正規化された名前を優先）
+    has_japanese_corp = any(corp in company_name for corp in ['株式会社', '有限会社', '合同会社'])
     extracted_name = extract_company_name_from_html(top_page_html, company_name)
+
     if extracted_name != company_name:
-        logger.debug(f"企業名を更新: {company_name} → {extracted_name}")
-        company_name = extracted_name
+        # 元の名前に日本語法人格があり、抽出名に日本語法人格がない場合は上書きしない
+        extracted_has_jp = any(corp in extracted_name for corp in ['株式会社', '有限会社', '合同会社'])
+        if has_japanese_corp and not extracted_has_jp:
+            logger.debug(f"企業名を維持（日本語名優先）: {company_name} (抽出名: {extracted_name})")
+        else:
+            logger.debug(f"企業名を更新: {company_name} → {extracted_name}")
+            company_name = extracted_name
 
     # STEP 3: お問い合わせURL抽出
     contact_url = extract_contact_from_html(top_page_html, base_url)

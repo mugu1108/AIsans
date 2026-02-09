@@ -76,8 +76,11 @@ class SearchWorkflow:
 
             # ステップ2.5: LLMクレンジング（企業名正規化＋非企業サイト除外）
             if self.llm_cleanser:
+                logger.info(f"LLMクレンジング開始: {len(companies)}件")
                 job.update_status(JobStatus.SEARCHING, "企業データをクレンジング中...", 25)
                 self.job_manager.update_job(job)
+            else:
+                logger.warning("LLMクレンジングスキップ: OPENAI_API_KEYが設定されていません")
 
                 companies_dict = [
                     {"company_name": c.company_name, "url": c.url, "domain": c.domain}

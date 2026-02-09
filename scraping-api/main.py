@@ -240,6 +240,7 @@ async def search_sync(request: SearchSyncRequest):
 
     # STEP 3.5: LLMクレンジング（企業名正規化＋非企業サイト除外）
     if settings.openai_api_key:
+        logger.info(f"LLMクレンジング開始: {len(companies)}件")
         from services.llm_cleanser import LLMCleanser
         from models.search import CompanyData
         cleanser = LLMCleanser(settings.openai_api_key)
@@ -267,6 +268,8 @@ async def search_sync(request: SearchSyncRequest):
             logger.info(f"LLMクレンジング完了: {original_count}件 → {len(companies)}件（{excluded_count}件除外）")
         except Exception as e:
             logger.warning(f"LLMクレンジングエラー（スキップ）: {e}")
+    else:
+        logger.warning("LLMクレンジングスキップ: OPENAI_API_KEYが設定されていません")
 
     # STEP 4: スクレイピング
     companies_for_scrape = [
