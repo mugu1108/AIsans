@@ -21,6 +21,9 @@ class Settings:
     # GAS Webhook
     gas_webhook_url: str
 
+    # OpenAI API（企業名クレンジング用）
+    openai_api_key: str
+
     # 検索設定
     max_target_count: int = 300
     serper_results_per_query: int = 100
@@ -35,11 +38,13 @@ class Settings:
         serper_api_key = os.environ.get("SERPER_API_KEY", "")
         slack_bot_token = os.environ.get("SLACK_BOT_TOKEN", "")
         gas_webhook_url = os.environ.get("GAS_WEBHOOK_URL", "")
+        openai_api_key = os.environ.get("OPENAI_API_KEY", "")
 
         return cls(
             serper_api_key=serper_api_key,
             slack_bot_token=slack_bot_token,
             gas_webhook_url=gas_webhook_url,
+            openai_api_key=openai_api_key,
             max_target_count=int(os.environ.get("MAX_TARGET_COUNT", "300")),
             serper_results_per_query=int(os.environ.get("SERPER_RESULTS_PER_QUERY", "100")),
             scrape_concurrent=int(os.environ.get("SCRAPE_CONCURRENT", "10")),

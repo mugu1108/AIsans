@@ -15,6 +15,7 @@ from services.serper import SerperClient
 from services.gas_client import GASClient
 from services.slack_notifier import SlackNotifier
 from services.job_manager import JobManager
+from services.llm_cleanser import LLMCleanser
 from scraper import scrape_companies, is_excluded_domain, extract_domain
 
 logger = logging.getLogger(__name__)
@@ -29,11 +30,13 @@ class SearchWorkflow:
         gas_client: GASClient,
         slack_notifier: SlackNotifier,
         job_manager: JobManager,
+        openai_api_key: Optional[str] = None,
     ):
         self.serper = serper_client
         self.gas = gas_client
         self.slack = slack_notifier
         self.job_manager = job_manager
+        self.llm_cleanser = LLMCleanser(openai_api_key) if openai_api_key else None
 
     async def execute(self, job: Job) -> None:
         """
@@ -70,6 +73,29 @@ class SearchWorkflow:
                     "検索結果が0件でした。検索キーワードを変更してお試しください。"
                 )
                 return
+
+            # ステップ2.5: LLMクレンジング（企業名の正規化）
+            if self.llm_cleanser:
+                job.update_status(JobStatus.SEARCHING, "企業名をクレンジング中...", 25)
+                self.job_manager.update_job(job)
+
+                companies_dict = [
+                    {"company_name": c.company_name, "url": c.url, "domain": c.domain}
+                    for c in companies
+                ]
+
+                try:
+                    cleansed = await self.llm_cleanser.cleanse_company_names(companies_dict)
+                    # クレンジング結果を反映
+                    for i, c in enumerate(companies):
+                        if i < len(cleansed):
+                            new_name = cleansed[i].get("company_name", "")
+                            if new_name and new_name != c.company_name:
+                                logger.debug(f"企業名クレンジング: {c.company_name} → {new_name}")
+                                c.company_name = new_name
+                    logger.info(f"LLMクレンジング完了: {len(companies)}件")
+                except Exception as e:
+                    logger.warning(f"LLMクレンジングエラー（スキップ）: {e}")
 
             # ステップ3: スクレイピング
             job.update_status(JobStatus.SCRAPING, f"{len(companies)}件をスクレイピング中...", 35)
@@ -212,6 +238,7 @@ async def run_workflow_async(
     slack_bot_token: str,
     gas_webhook_url: str,
     job_manager: JobManager,
+    openai_api_key: Optional[str] = None,
 ) -> None:
     """
     バックグラウンドでワークフローを実行
@@ -222,12 +249,14 @@ async def run_workflow_async(
         slack_bot_token: Slack Bot Token
         gas_webhook_url: GAS Webhook URL
         job_manager: ジョブマネージャー
+        openai_api_key: OpenAI APIキー（企業名クレンジング用、オプション）
     """
     workflow = SearchWorkflow(
         serper_client=SerperClient(serper_api_key),
         gas_client=GASClient(gas_webhook_url),
         slack_notifier=SlackNotifier(slack_bot_token),
         job_manager=job_manager,
+        openai_api_key=openai_api_key,
     )
 
     await workflow.execute(job)

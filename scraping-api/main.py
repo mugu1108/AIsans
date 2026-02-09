@@ -238,6 +238,25 @@ async def search_sync(request: SearchSyncRequest):
             message="検索結果が0件でした。キーワードを変更してお試しください。",
         )
 
+    # STEP 3.5: LLMクレンジング（企業名正規化）
+    if settings.openai_api_key:
+        from services.llm_cleanser import LLMCleanser
+        cleanser = LLMCleanser(settings.openai_api_key)
+        companies_dict = [
+            {"company_name": c.company_name, "url": c.url, "domain": c.domain}
+            for c in companies
+        ]
+        try:
+            cleansed = await cleanser.cleanse_company_names(companies_dict)
+            for i, c in enumerate(companies):
+                if i < len(cleansed):
+                    new_name = cleansed[i].get("company_name", "")
+                    if new_name and new_name != c.company_name:
+                        c.company_name = new_name
+            logger.info(f"LLMクレンジング完了: {len(companies)}件")
+        except Exception as e:
+            logger.warning(f"LLMクレンジングエラー（スキップ）: {e}")
+
     # STEP 4: スクレイピング
     companies_for_scrape = [
         {"company_name": c.company_name, "url": c.url}
@@ -339,6 +358,7 @@ async def start_search(request: SearchRequest, background_tasks: BackgroundTasks
         slack_bot_token=settings.slack_bot_token,
         gas_webhook_url=settings.gas_webhook_url,
         job_manager=job_manager,
+        openai_api_key=settings.openai_api_key,
     )
 
     return SearchJobResponse(
