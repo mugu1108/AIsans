@@ -78,6 +78,94 @@ def generate_diverse_queries(keyword: str) -> list[str]:
     return queries
 
 
+def generate_retry_queries(keyword: str, round_num: int, used_queries: set[str] = None) -> list[str]:
+    """
+    リトライ用の新しい検索クエリを生成。
+    ラウンドごとに異なるアプローチでクエリを作る。
+
+    Args:
+        keyword: 元の検索キーワード（例: "東京 IT企業"）
+        round_num: リトライ回数（1, 2, 3）
+        used_queries: 使用済みクエリのセット（重複を避ける）
+
+    Returns:
+        新しいクエリのリスト
+    """
+    if used_queries is None:
+        used_queries = set()
+
+    candidates = []
+
+    if round_num == 1:
+        # リトライ1回目: 地域の細分化 + 業態バリエーション
+        candidates = [
+            # 地域の細分化（東京の場合は区レベル）
+            f"{keyword} 港区",
+            f"{keyword} 渋谷区",
+            f"{keyword} 新宿区",
+            f"{keyword} 品川区",
+            f"{keyword} 千代田区",
+            # 業態バリエーション
+            f"{keyword} 中堅企業",
+            f"{keyword} 受託開発",
+            f"{keyword} SES",
+            f"{keyword} SaaS",
+            f"{keyword} DX推進",
+            f"{keyword} コンサルティング",
+        ]
+
+    elif round_num == 2:
+        # リトライ2回目: 切り口を変える
+        candidates = [
+            # 企業規模・属性
+            f"{keyword} 上場企業",
+            f"{keyword} 非上場",
+            f"{keyword} 設立 2020年以降",
+            f"{keyword} 急成長",
+            f"{keyword} 従業員 50人以上",
+            f"{keyword} 資本金",
+            # 特定サービス
+            f"{keyword} クラウド",
+            f"{keyword} AI",
+            f"{keyword} セキュリティ",
+            f"{keyword} インフラ",
+            f"{keyword} データ分析",
+            f"{keyword} EC構築",
+            f"{keyword} 業務システム",
+            # 別のリスト系
+            f"{keyword} 企業 まとめ site:co.jp",
+            f"{keyword} 注目企業",
+        ]
+
+    elif round_num >= 3:
+        # リトライ3回目以降: 地域拡大 + ニッチな切り口
+        candidates = [
+            # 地域拡大
+            f"{keyword} 神奈川",
+            f"{keyword} 埼玉",
+            f"{keyword} 千葉",
+            f"{keyword} 大阪",
+            # ニッチな切り口
+            f"{keyword} BtoB",
+            f"{keyword} BtoC",
+            f"{keyword} 自社サービス",
+            f"{keyword} 自社開発",
+            f"{keyword} グローバル",
+            f"{keyword} IPO",
+            f"{keyword} 技術力",
+            f"{keyword} アジャイル",
+            f"{keyword} リモートワーク",
+            f"{keyword} フルリモート",
+        ]
+
+    # 使用済みクエリを除外
+    new_queries = [q for q in candidates if q not in used_queries]
+
+    logger.info(f"リトライクエリ生成: {len(candidates)}候補 → {len(new_queries)}個（{len(candidates) - len(new_queries)}個は使用済み）")
+
+    return new_queries
+
+
 # 除外ドメインサフィックス（政府・自治体・教育機関）
 EXCLUDE_SUFFIXES = ['.go.jp', '.lg.jp', '.ed.jp', '.ac.jp']
 

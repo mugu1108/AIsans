@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional
 
 from models.job import Job, JobStatus
-from services.serper import SerperClient
+from services.serper import SerperClient, generate_retry_queries
 from services.gas_client import GASClient
 from services.slack_notifier import SlackNotifier
 from services.job_manager import JobManager
@@ -186,6 +186,7 @@ class SearchWorkflow:
         all_cleansed = []  # 累積クレンジング結果
         used_domains = set(existing_domains)  # 重複排除用（既存 + 取得済み）
         used_names = set()  # 企業名の重複排除用
+        used_queries = set(job.queries)  # 使用済みクエリ（リトライで同じクエリを使わない）
 
         for round_num in range(1, self.MAX_RETRY_ROUNDS + 2):  # 初回 + リトライ
             is_retry = round_num > 1
@@ -203,16 +204,32 @@ class SearchWorkflow:
                 job.update_status(JobStatus.SEARCHING, "企業を検索中...", 15)
                 self.job_manager.update_job(job)
 
+            # --- クエリ選択 ---
+            if is_retry:
+                # リトライ時: 新しいクエリを生成
+                queries = generate_retry_queries(
+                    keyword=job.search_keyword,
+                    round_num=round_num - 1,  # 1, 2, 3...
+                    used_queries=used_queries,
+                )
+                if not queries:
+                    logger.info(f"新しいクエリが生成できません。リトライ終了。")
+                    break
+                used_queries.update(queries)
+            else:
+                # 初回: 元のクエリを使用
+                queries = job.queries
+
             # --- 検索 ---
             # リトライ時は不足分より多めに検索（クレンジングで減る分を見越す）
             search_target = shortage * 2 if is_retry else target_count
-            
+
             companies = await self.serper.search_companies(
-                queries=job.queries,
+                queries=queries,
                 target_count=search_target,
                 existing_domains=list(used_domains),
             )
-            logger.info(f"ラウンド{round_num} 検索結果: {len(companies)}件")
+            logger.info(f"ラウンド{round_num} 検索結果: {len(companies)}件（クエリ数: {len(queries)}）")
 
             if not companies:
                 if is_retry:
