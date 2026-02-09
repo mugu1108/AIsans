@@ -73,7 +73,7 @@ SYSTEM_PROMPT = """あなたは企業データクレンジングの専門家で�
 
 
 class LLMCleanser:
-    """LLMを使用した企業データクレンジング v4"""
+    """LLMを使用した企業データクレンジング v5"""
 
     API_URL = "https://api.openai.com/v1/chat/completions"
     MODEL = "gpt-4o"
@@ -204,20 +204,24 @@ class LLMCleanser:
         # 1. 全角英数字 → 半角（Ｓｋｙ → Sky、ＩＴ → IT）
         name = unicodedata.normalize('NFKC', name)
 
-        # 2. パイプ以降を削除（「〇〇合同会社 | ITコンサル」→「〇〇合同会社」）
-        name = re.split(r'\s*[|｜]\s*', name)[0].strip()
+        # 2. 区切り文字以降を削除（パイプ、罫線文字など全て対応）
+        #    「〇〇合同会社 | ITコンサル」→「〇〇合同会社」
+        #    「株式会社MORLD│スマホ対応のホームページ制作」→「株式会社MORLD」
+        name = re.split(r'\s*[|｜│]\s*', name)[0].strip()
 
         # 3. カッコ内を削除（全角・半角両方）
         #    「株式会社LIG(リグ)」→「株式会社LIG」
         #    「合同会社シストリー（Cistree.llc）」→「合同会社シストリー」
-        #    「公益社団法人企業情報化協会（IT協会）」→「公益社団法人企業情報化協会」
         name = re.sub(r'\s*[（(][^）)]*[）)]\s*', '', name)
 
         # 4. 残った孤立カッコを除去（「ITエンジニア養成講座）」→「ITエンジニア養成講座」）
         name = re.sub(r'[（()）]', '', name)
 
-        # 5. 「のホームページ」「の公式サイト」等の接尾辞を除去
-        name = re.sub(r'の(ホームページ|公式サイト|公式ホームページ|ウェブサイト|HP|Webサイト|WEBサイト|オフィシャルサイト)$', '', name)
+        # 5. 「公式サイト」「コーポレートサイト」等の接尾辞を除去（「の」有無両方対応）
+        name = re.sub(r'の?(公式サイト|コーポレートサイト|オフィシャルサイト|公式ホームページ|公式HP)$', '', name)
+
+        # 5.5 「のホームページ」「のウェブサイト」等の接尾辞を除去
+        name = re.sub(r'の(ホームページ|ウェブサイト|HP|Webサイト|WEBサイト)$', '', name)
 
         # 6. 「〇〇へようこそ」パターン
         name = re.sub(r'へようこそ$', '', name)
@@ -227,6 +231,15 @@ class LLMCleanser:
 
         # 7.5 「〇〇なら株式会社〇〇」パターンを除去
         name = re.sub(r'^.+なら(株式会社|有限会社|合同会社|合名会社|合資会社)', r'\1', name)
+
+        # 7.6 先頭の「ホームページ制作の」「アプリ開発の」等を除去
+        name = re.sub(r'^.+(?:制作|開発|構築|運用|導入|対策|支援)の(株式会社|有限会社|合同会社|合名会社|合資会社)', r'\1', name)
+
+        # 7.7 法人格だけ残った場合は空にする（「アプリ開発なら株式会社」→「株式会社」→空）
+        stripped = name.strip()
+        if stripped in ('株式会社', '有限会社', '合同会社', '合名会社', '合資会社'):
+            return ''
+
         # 8. 1文字ずつスペースで区切られたパターンを修正（「S k y」→「Sky」）
         #    アルファベットが1文字ずつスペース区切りになっているケース
         def fix_spaced_chars(m):
@@ -248,6 +261,10 @@ class LLMCleanser:
     def _is_invalid_company_name(self, name: str) -> bool:
         """Trueを返したら除外する"""
 
+        # --- 空チェック ---
+        if not name:
+            return True
+
         # --- 基本チェック ---
         if len(name) > 40:
             return True
@@ -255,7 +272,7 @@ class LLMCleanser:
             return True
 
         # --- タイトル区切り文字が残っている ---
-        if '|' in name or '｜' in name:
+        if '|' in name or '｜' in name or '│' in name:
             return True
         if '【' in name or '】' in name:
             return True
@@ -297,13 +314,11 @@ class LLMCleanser:
             return True
 
         # --- 文章パターン（「〇〇する株式会社」「〇〇を△△する合同会社」） ---
-        #    正常: 「株式会社〇〇」「〇〇株式会社」（法人格が先頭 or 末尾付近）
-        #    異常: 「経営をITと財務の面から支援する合同会社」（法人格の前に長い文章）
         corporate_match = re.search(r'(株式会社|有限会社|合同会社|合名会社|合資会社)', name)
         if corporate_match:
             pos = corporate_match.start()
             before_corporate = name[:pos]
-            # 法人格の前に10文字以上の文章がある場合は異常
+            # 法人格の前に20文字以上の文章がある場合は異常
             if len(before_corporate) > 20:
                 return True
             # 法人格の前に動詞的な表現がある場合は異常
