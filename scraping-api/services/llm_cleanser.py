@@ -17,12 +17,16 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
-# Dify仕様のシステムプロンプト
-SYSTEM_PROMPT = """あなたは企業データクレンジングの専門家です。
+# Dify仕様のシステムプロンプト（テンプレート）
+SYSTEM_PROMPT_TEMPLATE = """あなたは企業データクレンジングの専門家です。
 
 ## タスク
-検索結果から「企業の公式HP」のみを抽出・正規化してください。
-企業HPではないサイトは必ず除外してください。
+検索結果から有効な企業情報を抽出・正規化してください。
+
+## ★重要★
+**できるだけ多くの有効な企業を出力してください（目標: {target_count}件）。**
+入力データに{target_count}件以上の候補がある場合、出力が{target_count}件未満になることは許されません。
+{target_count}件に満たない場合は基準を緩和し、企業名が不完全でもドメインから推測できるなら残してください。
 
 ## 処理ルール
 
@@ -30,53 +34,31 @@ SYSTEM_PROMPT = """あなたは企業データクレンジングの専門家で�
 検索結果のtitleから正しい企業名を抽出：
 - 「株式会社〇〇｜公式サイト」→「株式会社〇〇」
 - 「〇〇 | 会社案内」→「株式会社〇〇」または「〇〇株式会社」
+- 「はじめまして、〇〇のブログ」→ 企業名が不明なら除外
+- 「横浜工場」のような施設名のみは除外
 - 「沿革：〇〇株式会社」→「〇〇株式会社」（余分な接頭辞を削除）
+- 「カンパニー」「継手 バルブ 製造・販売」などの不完全な名前は除外
 
-### 2. 必ず除外するもの（企業HPではない）
-以下は**絶対に含めないでください**：
+### 2. URL正規化
+- ブログ記事URL → トップページURLに変換
+  例: https://example.co.jp/blog/123 → https://example.co.jp/
+- 部門ページURL → トップページURLに変換
+  例: https://example.co.jp/about/history → https://example.co.jp/
 
-**比較・マッチングサイト**
-- 「〇〇比較」「比較ビズ」「一括見積もり」などの比較サイト
-- 企業紹介・マッチングサービス
-
-**イベント・展示会サイト**
-- 「〇〇展」「〇〇EXPO」「CEATEC」などのイベントサイト
-- 展示会・カンファレンスのサイト
-
-**リスト・名簿販売サイト**
-- 「企業リスト」「法人名簿」「リストマーケット」などのリスト販売
-
-**業界団体・協会**
-- 「〇〇協会」「〇〇連盟」「〇〇連合会」「〇〇工業会」
-- 商工会議所、業界団体
-
-**施設・地名**
-- 「〇〇工場」のみの施設名
-- 地名のみ（「横山町・馬喰町」など）
-- 「〇〇センター」などの施設名
-
-**その他除外**
-- 求人サイト（indeed, mynavi, rikunabi, doda等）
-- SNS（twitter, facebook, instagram, youtube等）
-- ニュースサイト（yahoo, nikkei, asahi等）
+### 3. 除外対象（これらのみ除外、迷ったら残す）
+以下は必ず除外：
+- 求人サイト（indeed, mynavi, rikunabi, doda, en-japan, baitoru等）
+- SNS（twitter, facebook, instagram, youtube, tiktok等）
+- ニュースサイト（yahoo, nikkei, asahi, yomiuri等）
 - Wikipedia
-- 企業情報サイト（baseconnect, wantedly, openwork等）
+- 企業紹介サイト（baseconnect, wantedly, openwork, vorkers等）
 - 政府・自治体サイト（.go.jp, .lg.jp）
-- ブログ記事、個人サイト
-- 企業名が全く抽出できないもの
-- キャッチフレーズのみ（「地域とともに」など）
-- 不完全な名前（「カンパニー」「継手 バルブ 製造・販売」など）
+- 比較・マッチングサイト（〇〇幹事、比較ビズ、一括見積もり等）
+- 企業名が全く抽出できずドメインからも推測不可能なもの
+**上記に該当しないものは必ず残してください。迷ったら残す。**
 
-### 3. 含めるもの（企業HP）
-以下のみを含めてください：
-- 株式会社〇〇、〇〇株式会社
-- 有限会社〇〇、〇〇有限会社
-- 合同会社〇〇
-- 〇〇Inc.、〇〇Corp.などの企業
-
-### 4. 関連性判定
-検索キーワードに対して関連性が低い企業も除外：
-- 検索キーワードの業種・地域と明らかに無関係な企業"""
+### 4. 重複排除
+- 同一ドメインの企業は1つだけ残す"""
 
 
 class LLMCleanser:
@@ -151,6 +133,11 @@ class LLMCleanser:
         """
         バッチ単位でクレンジング
         """
+        target_count = len(batch)  # バッチサイズを目標件数とする
+
+        # システムプロンプトにtarget_countを埋め込む
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(target_count=target_count)
+
         # 入力データを整形
         input_data = []
         for i, c in enumerate(batch):
@@ -161,13 +148,13 @@ class LLMCleanser:
                 "domain": c.get("domain", ""),
             })
 
-        user_prompt = self._create_user_prompt(input_data, search_keyword)
+        user_prompt = self._create_user_prompt(input_data, search_keyword, target_count)
 
         # API呼び出し
         payload = {
             "model": self.MODEL,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
             "temperature": 0.2,
@@ -186,71 +173,77 @@ class LLMCleanser:
         # レスポンス解析
         content = data["choices"][0]["message"]["content"]
         result = json.loads(content)
-        valid_companies = result.get("valid_companies", [])
+
+        # Dify仕様: cleaned_companies を使用
+        cleaned_companies = result.get("cleaned_companies", [])
 
         # 結果をマージ（有効な企業のみ返す）
         cleansed = []
-        for vc in valid_companies:
-            idx = vc.get("index", 0) - 1
-            if 0 <= idx < len(batch):
-                original = batch[idx]
-                new_company = original.copy()
-                # 正規化された企業名を使用
-                new_name = vc.get("company_name", "")
-                if new_name:
-                    if new_name != original.get("company_name", ""):
-                        logger.debug(f"企業名正規化: {original.get('company_name', '')} → {new_name}")
-                    new_company["company_name"] = new_name
-                    cleansed.append(new_company)
+        for cc in cleaned_companies:
+            # company_name, url, domain を直接取得（Dify仕様）
+            company_name = cc.get("company_name", "")
+            url = cc.get("url", "")
+            domain = cc.get("domain", "")
+
+            if company_name and url:
+                cleansed.append({
+                    "company_name": company_name,
+                    "url": url,
+                    "domain": domain or self._extract_domain(url),
+                })
 
         return cleansed
+
+    def _extract_domain(self, url: str) -> str:
+        """URLからドメインを抽出"""
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            return parsed.netloc.replace("www.", "")
+        except Exception:
+            return ""
 
     def _create_user_prompt(
         self,
         input_data: list[dict],
         search_keyword: str,
+        target_count: int,
     ) -> str:
         """
-        ユーザープロンプトを作成
+        ユーザープロンプトを作成（Dify仕様準拠）
         """
         data_json = json.dumps(input_data, ensure_ascii=False, indent=2)
 
         return f"""## 検索キーワード
 {search_keyword}
 
+## 目標件数
+{target_count}件
+
 ## 検索結果データ
 {data_json}
 
 ## 指示
-上記の検索結果から、「企業の公式HP」のみを抽出してください。
-企業HPではないサイト（比較サイト、イベント、協会、リスト販売等）は除外してください。
+上記の検索結果から有効な企業情報を抽出・正規化してください。
+目標は{target_count}件です。迷ったら残す方向で判断してください。
 
 ## 出力形式（JSON）
+必ず以下の形式のみで出力（説明文不要）：
 {{
-  "valid_companies": [
+  "cleaned_companies": [
     {{
-      "index": 1,
       "company_name": "株式会社〇〇",
-      "reason": "製造業の企業HP"
-    }},
-    ...
+      "url": "https://example.co.jp/",
+      "domain": "example.co.jp",
+      "relevance_score": 0.95
+    }}
   ],
-  "excluded": [
-    {{
-      "index": 2,
-      "reason": "比較サイトのため除外"
-    }},
-    ...
-  ],
-  "summary": {{
-    "input_count": {len(input_data)},
-    "valid_count": 5,
-    "excluded_count": 3
-  }}
+  "excluded_count": 5,
+  "valid_count": 25
 }}
 
-valid_companiesには企業HPのみを含めてください。
-indexは入力データの番号と一致させてください。"""
+relevance_scoreは0.1〜1.0の範囲で設定。
+relevance_scoreが高い順にソートしてください。"""
 
 
 # 後方互換性のための旧インターフェース
