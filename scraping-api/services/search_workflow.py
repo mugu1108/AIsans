@@ -5,6 +5,7 @@
 v2改善:
 - スクレイピング脱落バッファ（15%上乗せ）
 - リトライ時に汎用クエリ生成（業種・地域自動判定）
+- 目標件数に応じた動的リトライ回数
 """
 
 import asyncio
@@ -28,9 +29,8 @@ logger = logging.getLogger(__name__)
 class SearchWorkflow:
     """検索ワークフロー実行クラス"""
 
-    MAX_RETRY_ROUNDS = 3
     GIVE_UP_THRESHOLD = 0.8       # 目標の80%以上で打ち切り
-    SCRAPING_BUFFER = 1.15        # ★v2追加: スクレイピング脱落分15%上乗せ
+    SCRAPING_BUFFER = 1.15        # スクレイピング脱落分15%上乗せ
 
     def __init__(
         self,
@@ -95,11 +95,11 @@ class SearchWorkflow:
                 job_portal = sum(1 for r in scraped_results if r.error == 'job_portal_site')
                 logger.info(f"除外: {failed_count}件（アクセス失敗: {top_failed}件、企業名不一致: {mismatch}件、求人/ポータル: {job_portal}件）")
 
-            # ★v2: 目標数を超えた場合は切り詰め（バッファで多めに取得しているため）
+            # 目標数を超えた場合は切り詰め（バッファで多めに取得しているため）
             if len(successful_results) > job.target_count:
                 successful_results = successful_results[:job.target_count]
                 logger.info(f"目標数に切り詰め: {job.target_count}件")
-            
+
             if self.llm_cleanser:
                 for r in successful_results:
                     r.company_name = self.llm_cleanser._normalize_company_name(r.company_name)
@@ -180,17 +180,20 @@ class SearchWorkflow:
         """
         from models.search import CompanyData
 
-        # ★v2: スクレイピング脱落分を見越して多めに取得
+        # スクレイピング脱落分を見越して多めに取得
         target_count = int(job.target_count * self.SCRAPING_BUFFER)
         logger.info(f"検索目標: {job.target_count}件 → バッファ込み{target_count}件")
+
+        # ★目標件数に応じてリトライ回数を動的に決定
+        max_retries = max(3, job.target_count // 10)
+        logger.info(f"最大リトライ回数: {max_retries}回")
 
         all_cleansed = []
         used_domains = set(existing_domains)
         used_names = set()
         used_queries = set()
 
-        # 初回(1回) + リトライ(MAX_RETRY_ROUNDS回) = 最大4回
-        for round_num in range(1, self.MAX_RETRY_ROUNDS + 2):
+        for round_num in range(1, max_retries + 2):
             is_retry = round_num > 1
             shortage = target_count - len(all_cleansed)
 
@@ -205,7 +208,7 @@ class SearchWorkflow:
                     logger.info("新しいクエリが生成できません。リトライ終了。")
                     break
 
-                logger.info(f"=== リトライ {round_num - 1}/{self.MAX_RETRY_ROUNDS} === "
+                logger.info(f"=== リトライ {round_num - 1}/{max_retries} === "
                            f"不足: {shortage}件, 新クエリ: {len(queries)}個")
                 job.update_status(
                     JobStatus.SEARCHING,
@@ -300,7 +303,7 @@ class SearchWorkflow:
                 break
 
             # --- リトライ打ち切り判定 ---
-            if round_num > self.MAX_RETRY_ROUNDS:
+            if round_num > max_retries:
                 logger.info(f"最大リトライ回数到達。{len(all_cleansed)}/{target_count}件で終了。")
                 break
 
