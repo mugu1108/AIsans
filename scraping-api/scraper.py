@@ -213,42 +213,82 @@ def extract_company_name_from_html(html: str, fallback_name: str) -> str:
         for invalid in invalid_names:
             if name_lower == invalid.lower():
                 return False
+        # 長すぎる名前は無効（50文字超）
+        if len(name) > 50:
+            return False
         return True
 
-    def clean_title(title: str) -> str:
-        """タイトルから企業名を抽出"""
+    def extract_company_name_part(text: str) -> str:
+        """
+        テキストから企業名部分だけを抽出
+        例: "株式会社SKYWILL | AI・クラウド・ITコンサルティング..." → "株式会社SKYWILL"
+        """
+        text = text.strip()
+
+        # 【公式】などのプレフィックスを除去
+        text = re.sub(r'^【[^】]*】\s*', '', text)
+        text = re.sub(r'^\[[^\]]*\]\s*', '', text)
+
         # 区切り文字で分割
-        separators = ['｜', '|', ' - ', '－', '―', '–', '::']
-        parts = [title]
+        separators = ['｜', '|', ' - ', '－', '―', '–', '::', ' / ']
+        parts = [text]
         for sep in separators:
             new_parts = []
             for part in parts:
                 new_parts.extend(part.split(sep))
             parts = new_parts
 
-        # 各パートをクリーンアップ
-        cleaned_parts = []
+        # 各パートをクリーンアップして有効な企業名を探す
+        valid_parts = []
         for part in parts:
             part = part.strip()
-            # 無効な名前でなければ追加
-            if is_valid_name(part):
-                cleaned_parts.append(part)
+            if not part:
+                continue
 
-        if cleaned_parts:
-            # 株式会社、有限会社、合同会社を含むパートを優先
-            for part in cleaned_parts:
-                if '株式会社' in part or '有限会社' in part or '合同会社' in part:
-                    return part
-            # なければ最初の有効なパートを返す
-            return cleaned_parts[0]
-        return title.strip()
+            # 「東京の」「〇〇の」のような地域説明を除去
+            part = re.sub(r'^[^\s]{2,10}(の|における)', '', part)
+
+            # 法人格を含むパートを優先的に収集
+            if '株式会社' in part or '有限会社' in part or '合同会社' in part:
+                # 法人格を含む部分だけを抽出
+                company_match = re.search(
+                    r'(株式会社[^\s｜|・\-–―/]{1,30}|'
+                    r'[^\s｜|・\-–―/]{1,30}株式会社|'
+                    r'有限会社[^\s｜|・\-–―/]{1,30}|'
+                    r'[^\s｜|・\-–―/]{1,30}有限会社|'
+                    r'合同会社[^\s｜|・\-–―/]{1,30}|'
+                    r'[^\s｜|・\-–―/]{1,30}合同会社)',
+                    part
+                )
+                if company_match:
+                    valid_parts.append(company_match.group(1).strip())
+                else:
+                    valid_parts.append(part)
+            elif is_valid_name(part) and len(part) <= 30:
+                valid_parts.append(part)
+
+        # 法人格を含むパートを優先
+        for part in valid_parts:
+            if '株式会社' in part or '有限会社' in part or '合同会社' in part:
+                return part
+
+        # なければ最初の有効なパートを返す
+        if valid_parts:
+            return valid_parts[0]
+
+        return text.strip()
+
+    def clean_title(title: str) -> str:
+        """タイトルから企業名を抽出"""
+        return extract_company_name_part(title)
 
     # og:site_name を優先
     og_tag = soup.find('meta', property='og:site_name')
     if og_tag and og_tag.get('content'):
         name = og_tag['content'].strip()
-        if is_valid_name(name):
-            return name
+        cleaned = extract_company_name_part(name)
+        if is_valid_name(cleaned):
+            return cleaned
 
     # titleタグから抽出
     title_tag = soup.find('title')
