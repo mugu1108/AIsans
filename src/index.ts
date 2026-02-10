@@ -81,8 +81,8 @@ async function main(): Promise<void> {
       logger
     );
 
-    // 件数上限（Python API: 300件、Dify: 50件）
-    const MAX_COUNT = usePythonAPI ? 300 : 50;
+    // 件数上限（Python API: 500件、Dify: 50件）
+    const MAX_COUNT = usePythonAPI ? 500 : 50;
     logger.info(`件数上限: ${MAX_COUNT}件`);
 
     // イベントハンドラの登録
