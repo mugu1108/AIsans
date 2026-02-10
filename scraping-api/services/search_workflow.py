@@ -2,9 +2,9 @@
 検索ワークフローモジュール
 検索→クレンジング→リトライ→スクレイピング→保存→通知の一連の処理を実行
 
-v2改善:
-- スクレイピング脱落バッファ（15%上乗せ）
-- リトライ時に汎用クエリ生成（業種・地域自動判定）
+v2.2改善:
+- スクレイピング後に normalize_company_name + is_invalid_company_name を適用
+- 空・無効な企業名をスクレイピング後にも除外
 - 目標件数に応じた動的リトライ回数
 """
 
@@ -20,7 +20,7 @@ from services.serper import SerperClient, generate_diverse_queries, generate_ret
 from services.gas_client import GASClient
 from services.slack_notifier import SlackNotifier
 from services.job_manager import JobManager
-from services.llm_cleanser import LLMCleanser
+from services.llm_cleanser import LLMCleanser, normalize_company_name, is_invalid_company_name
 from scraper import scrape_companies, is_excluded_domain, extract_domain
 
 logger = logging.getLogger(__name__)
@@ -100,9 +100,27 @@ class SearchWorkflow:
                 successful_results = successful_results[:job.target_count]
                 logger.info(f"目標数に切り詰め: {job.target_count}件")
 
-            if self.llm_cleanser:
-                for r in successful_results:
-                    r.company_name = self.llm_cleanser._normalize_company_name(r.company_name)
+            # ★ スクレイピング後の企業名正規化 + 無効企業名の除外
+            cleaned_results = []
+            post_scrape_excluded = 0
+            for r in successful_results:
+                original_name = r.company_name
+                r.company_name = normalize_company_name(r.company_name)
+
+                if r.company_name != original_name:
+                    logger.debug(f"スクレイピング後正規化: {original_name} → {r.company_name}")
+
+                if is_invalid_company_name(r.company_name):
+                    logger.info(f"スクレイピング後除外: {original_name} → {r.company_name}")
+                    post_scrape_excluded += 1
+                    continue
+
+                cleaned_results.append(r)
+
+            if post_scrape_excluded > 0:
+                logger.info(f"スクレイピング後クレンジング: {len(successful_results)}件 → {len(cleaned_results)}件（{post_scrape_excluded}件除外）")
+
+            successful_results = cleaned_results
 
             # ステップ4: GAS保存
             job.update_status(JobStatus.SAVING, "スプレッドシートに保存中...", 80)

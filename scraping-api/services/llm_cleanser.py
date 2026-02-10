@@ -72,8 +72,255 @@ SYSTEM_PROMPT = """あなたは企業データクレンジングの専門家で�
 }"""
 
 
+# 法人格パターン（共通定数）
+_CORPORATE_TYPES = r'株式会社|有限会社|合同会社|合名会社|合資会社'
+_CORPORATE_TYPES_EN = r'Inc\.?|Corp\.?|Co\.?,?\s*Ltd\.?|LLC|LLP|Limited'
+# 社名に使われる文字（日本語・英数字・一部記号）
+_NAME_CHARS = r'A-Za-z0-9ぁ-んァ-ヶー一-龥々\.\-・&'
+
+
+# ============================================================
+# 企業名正規化（モジュールレベル公開関数）
+# ============================================================
+
+def normalize_company_name(name: str) -> str:
+    """
+    企業名を正規化する。
+    「ゴミを削る」のではなく「法人格+社名を抽出する」アプローチ。
+    """
+    if not name:
+        return ''
+
+    # === Phase 1: 基本正規化 ===
+
+    # 全角英数字 → 半角
+    name = unicodedata.normalize('NFKC', name)
+
+    # 区切り文字で分割し、法人格を含む部分を採用
+    # |｜│ で分割
+    parts = re.split(r'\s*[|｜│]\s*', name)
+    if len(parts) > 1:
+        name = _find_corporate_part(parts) or parts[0]
+
+    # - で分割（スペース付きのみ: 「会社名 - 公式サイト」）
+    if ' - ' in name:
+        parts = name.split(' - ')
+        name = _find_corporate_part(parts) or parts[0]
+
+    # 。や : で分割（「...です。:六甲電子株式会社」）
+    if re.search(r'[。：:]\s*', name) and len(name) > 20:
+        parts = re.split(r'[。：:]\s*', name)
+        found = _find_corporate_part(parts)
+        if found:
+            name = found
+
+    # === Phase 2: カッコ処理 ===
+
+    # 【】とその中身を削除 → 閉じなし対応
+    name = re.sub(r'【[^】]*】', '', name)
+    if '【' in name:
+        before = name.split('【')[0].strip()
+        after = name.split('【')[1].strip()
+        if re.search(_CORPORATE_TYPES, after):
+            name = after
+        elif before:
+            name = before
+
+    # 「」とその中身を削除
+    name = re.sub(r'「[^」]*」', '', name)
+
+    # ()（）カッコ内を削除
+    name = re.sub(r'\s*[（(][^）)]*[）)]\s*', '', name)
+    name = re.sub(r'[（()）「」【】]', '', name)
+
+    # === Phase 3: 接尾辞の除去 ===
+
+    # 公式サイト系
+    name = re.sub(r'の?(公式サイト|コーポレートサイト|オフィシャルサイト|公式ホームページ|公式HP)$', '', name)
+    name = re.sub(r'の(ホームページ|ウェブサイト|HP|Webサイト|WEBサイト)$', '', name)
+    name = re.sub(r'へようこそ$', '', name)
+
+    # 先頭の接頭辞
+    name = re.sub(r'^(沿革|会社概要|企業情報|会社案内|トップページ|HOME|ホーム)\s*[:：\-\|]\s*', '', name)
+
+    # === Phase 4: キャッチコピー・文章からの企業名抽出 ===
+
+    # 「〇〇なら太邦株式会社」→ 「なら」以降を全て取る（社名ごと）
+    m = re.match(r'^.+?(?:のことなら|ことなら|なら)(.+)$', name)
+    if m:
+        after_nara = m.group(1).strip()
+        if re.search(_CORPORATE_TYPES, after_nara):
+            name = after_nara
+
+    # 「株式会社ベルテックスはWeb制作、経理代行…」→ 法人格+社名だけ抽出
+    # 法人格が先頭にある場合: 「株式会社〇〇は…」
+    m = re.match(rf'^((?:{_CORPORATE_TYPES})\s*[{_NAME_CHARS}]+?)(?:は|が|の(?:公式|ホーム|Web|サービス|提供)|へ|を|で|に|、|。)', name)
+    if m:
+        name = m.group(1).strip()
+
+    # 「〇〇は株式会社」「〇〇へ、株式会社」→ 法人格以降を取る
+    m = re.search(rf'(?:は|へ、|へ。|から|を)\s*((?:{_CORPORATE_TYPES})\s*[{_NAME_CHARS}]*)', name)
+    if m:
+        candidate = m.group(1).strip()
+        # 法人格+社名があれば採用、法人格だけなら空になる（後段で処理）
+        name = candidate
+
+    # 「〇〇制作の株式会社」→ 法人格以降を取る
+    m = re.search(rf'(?:制作|開発|構築|運用|導入|対策|支援|サービス)の((?:{_CORPORATE_TYPES})[{_NAME_CHARS}]*)', name)
+    if m:
+        candidate = m.group(1).strip()
+        if len(candidate) > 3:
+            name = candidate
+
+    # === Phase 5: 最終抽出（まだ文章っぽい場合のフォールバック） ===
+
+    # 句読点が残っている、または名前が長すぎる場合 → 法人格+社名を直接抽出
+    if ('、' in name or '。' in name or len(name) > 30):
+        extracted = _extract_company_from_text(name)
+        if extracted:
+            name = extracted
+
+    # === Phase 6: 最終クリーンアップ ===
+
+    # 「の株式会社」「の有限会社」等 → 無効
+    name = re.sub(rf'^の\s*({_CORPORATE_TYPES})', r'\1', name)
+
+    # 法人格だけ残った場合は空にする
+    stripped = name.strip()
+    if re.fullmatch(rf'\s*({_CORPORATE_TYPES})\s*', stripped):
+        return ''
+
+    # スペース修正
+    def fix_spaced_chars(m):
+        return m.group(0).replace(' ', '')
+    name = re.sub(r'\b[A-Za-z](?: [A-Za-z]){2,}\b', fix_spaced_chars, name)
+
+    name = name.replace('\u3000', ' ')
+    name = re.sub(r' +', ' ', name)
+    name = name.strip()
+
+    return name
+
+
+def _find_corporate_part(parts: list[str]) -> Optional[str]:
+    """パーツのリストから法人格を含む部分を返す"""
+    for part in parts:
+        part = part.strip()
+        if part and re.search(_CORPORATE_TYPES, part):
+            return part
+    return None
+
+
+def _extract_company_from_text(text: str) -> Optional[str]:
+    """
+    文章テキストから「法人格+社名」部分だけを抽出する。
+    最終手段のフォールバック。
+    """
+    # パターン1: 「(社名)(法人格)」— 法人格が後ろ
+    #   例: 「太邦株式会社」「六甲電子株式会社」
+    m = re.search(rf'([{_NAME_CHARS}]{{1,15}})({_CORPORATE_TYPES})', text)
+    if m:
+        company_name = m.group(1) + m.group(2)
+        # 社名部分が実際の名前か確認（1文字以上の意味ある文字）
+        name_part = m.group(1).strip()
+        if len(name_part) >= 1 and not re.match(r'^[のはがをでにへと、。]', name_part):
+            return company_name
+
+    # パターン2: 「(法人格)(社名)」— 法人格が前
+    #   例: 「株式会社ベルテックス」
+    m = re.search(rf'({_CORPORATE_TYPES})\s*([{_NAME_CHARS}]{{1,15}})', text)
+    if m:
+        company_name = m.group(1) + m.group(2)
+        name_part = m.group(2).strip()
+        if len(name_part) >= 1:
+            return company_name
+
+    return None
+
+
+def is_invalid_company_name(name: str) -> bool:
+    """
+    無効な企業名を検出する。Trueなら除外。
+    LLMクレンジング後・スクレイピング後の両方で使用。
+    """
+    # --- 空チェック ---
+    if not name:
+        return True
+
+    # --- 基本チェック ---
+    if len(name) > 40:
+        return True
+    if len(name) < 3:
+        return True
+
+    # --- タイトル区切り文字が残っている ---
+    if re.search(r'[|｜│【】「」]', name):
+        return True
+
+    # --- 途中で切れている ---
+    if name.endswith('...') or name.endswith('…'):
+        return True
+
+    # --- 協会・団体・連盟・財団 ---
+    if re.search(r'協会|連盟|懇話会|連合会|機構$|組合(?!せ)', name):
+        return True
+    if re.search(r'一般社団法人|公益社団法人|一般財団法人|公益財団法人', name):
+        return True
+
+    # --- メディア・出版 ---
+    if re.search(r'^週刊|^日刊|^月刊|新聞社?$|ニュース$|メディア$', name):
+        return True
+
+    # --- 教育・講座 ---
+    if re.search(r'講座|養成|スクール$|アカデミー$|塾$|学校$|学園$', name):
+        return True
+
+    # --- まとめ記事パターン ---
+    if re.search(r'\d+選|厳選|比較|おすすめ|ランキング', name):
+        return True
+
+    # --- キャッチコピーパターン ---
+    if re.search(r'なら.{0,5}$', name):
+        return True
+    if re.search(r'をお探し|を志す|を支援する|を実現|をサポート|を提供する', name):
+        return True
+    if '！' in name or '!' in name:
+        return True
+    if '。' in name:
+        return True
+
+    # --- 句読点（、）チェック: 法人格+社名の外に、がある場合のみ ---
+    if '、' in name:
+        # 「株式会社A、B事業」→ NG  「A、B株式会社」→ OK (社名に、が含まれるケースは稀)
+        return True
+
+    # --- 就活・求人パターン ---
+    if re.search(r'就活|キャリア|新卒|転職|求人|採用', name):
+        return True
+
+    # --- 文章パターン ---
+    corporate_match = re.search(rf'({_CORPORATE_TYPES})', name)
+    if corporate_match:
+        pos = corporate_match.start()
+        before_corporate = name[:pos]
+        if len(before_corporate) > 20:
+            return True
+        if re.search(r'する$|から$|へ$|を$|の面から$', before_corporate):
+            return True
+
+    # --- 法人格チェック（最終防衛ライン） ---
+    has_corporate = bool(re.search(
+        rf'{_CORPORATE_TYPES}|{_CORPORATE_TYPES_EN}',
+        name, re.IGNORECASE
+    ))
+    if not has_corporate:
+        return True
+
+    return False
+
+
 class LLMCleanser:
-    """LLMを使用した企業データクレンジング v5"""
+    """LLMを使用した企業データクレンジング v7"""
 
     API_URL = "https://api.openai.com/v1/chat/completions"
     MODEL = "gpt-4o"
@@ -176,13 +423,13 @@ class LLMCleanser:
 
             # STEP 1: 後処理で正規化
             original_name = company_name
-            company_name = self._normalize_company_name(company_name)
+            company_name = normalize_company_name(company_name)
             if company_name != original_name:
                 logger.debug(f"後処理で正規化: {original_name} → {company_name}")
 
             # STEP 2: セーフティネットで無効チェック
-            if self._is_invalid_company_name(company_name):
-                logger.info(f"セーフティネットで除外: {company_name}")
+            if is_invalid_company_name(company_name):
+                logger.info(f"セーフティネットで除外: {original_name} → {company_name}")
                 continue
 
             cleansed.append({
@@ -194,147 +441,6 @@ class LLMCleanser:
 
         logger.info(f"LLM出力: {len(cleaned_companies)}件 → 後処理後: {len(cleansed)}件")
         return cleansed
-
-    # ====================================
-    # 後処理: 企業名の正規化
-    # ====================================
-    def _normalize_company_name(self, name: str) -> str:
-        """LLM出力の企業名を後処理で正規化する"""
-
-        # 1. 全角英数字 → 半角（Ｓｋｙ → Sky、ＩＴ → IT）
-        name = unicodedata.normalize('NFKC', name)
-
-        # 2. 区切り文字以降を削除（パイプ、罫線文字など全て対応）
-        #    「〇〇合同会社 | ITコンサル」→「〇〇合同会社」
-        #    「株式会社MORLD│スマホ対応のホームページ制作」→「株式会社MORLD」
-        name = re.split(r'\s*[|｜│]\s*', name)[0].strip()
-
-        # 3. カッコ内を削除（全角・半角両方）
-        #    「株式会社LIG(リグ)」→「株式会社LIG」
-        #    「合同会社シストリー（Cistree.llc）」→「合同会社シストリー」
-        name = re.sub(r'\s*[（(][^）)]*[）)]\s*', '', name)
-
-        # 4. 残った孤立カッコを除去（「ITエンジニア養成講座）」→「ITエンジニア養成講座」）
-        name = re.sub(r'[（()）]', '', name)
-
-        # 5. 「公式サイト」「コーポレートサイト」等の接尾辞を除去（「の」有無両方対応）
-        name = re.sub(r'の?(公式サイト|コーポレートサイト|オフィシャルサイト|公式ホームページ|公式HP)$', '', name)
-
-        # 5.5 「のホームページ」「のウェブサイト」等の接尾辞を除去
-        name = re.sub(r'の(ホームページ|ウェブサイト|HP|Webサイト|WEBサイト)$', '', name)
-
-        # 6. 「〇〇へようこそ」パターン
-        name = re.sub(r'へようこそ$', '', name)
-
-        # 7. 先頭の接頭辞を除去（「沿革：」「会社概要 - 」等）
-        name = re.sub(r'^(沿革|会社概要|企業情報|会社案内|トップページ|HOME|ホーム)\s*[:：\-\|]\s*', '', name)
-
-        # 7.5 「〇〇なら株式会社〇〇」パターンを除去
-        name = re.sub(r'^.+なら(株式会社|有限会社|合同会社|合名会社|合資会社)', r'\1', name)
-
-        # 7.6 先頭の「ホームページ制作の」「アプリ開発の」等を除去
-        name = re.sub(r'^.+(?:制作|開発|構築|運用|導入|対策|支援)の(株式会社|有限会社|合同会社|合名会社|合資会社)', r'\1', name)
-
-        # 7.7 法人格だけ残った場合は空にする（「アプリ開発なら株式会社」→「株式会社」→空）
-        stripped = name.strip()
-        if stripped in ('株式会社', '有限会社', '合同会社', '合名会社', '合資会社'):
-            return ''
-
-        # 8. 1文字ずつスペースで区切られたパターンを修正（「S k y」→「Sky」）
-        #    アルファベットが1文字ずつスペース区切りになっているケース
-        def fix_spaced_chars(m):
-            return m.group(0).replace(' ', '')
-        name = re.sub(r'\b[A-Za-z](?: [A-Za-z]){2,}\b', fix_spaced_chars, name)
-
-        # 9. 全角スペース → 半角、連続スペース除去
-        name = name.replace('\u3000', ' ')
-        name = re.sub(r' +', ' ', name)
-
-        # 10. 前後空白除去
-        name = name.strip()
-
-        return name
-
-    # ====================================
-    # セーフティネット: 無効な企業名の検出
-    # ====================================
-    def _is_invalid_company_name(self, name: str) -> bool:
-        """Trueを返したら除外する"""
-
-        # --- 空チェック ---
-        if not name:
-            return True
-
-        # --- 基本チェック ---
-        if len(name) > 40:
-            return True
-        if len(name) < 3:
-            return True
-
-        # --- タイトル区切り文字が残っている ---
-        if '|' in name or '｜' in name or '│' in name:
-            return True
-        if '【' in name or '】' in name:
-            return True
-
-        # --- 途中で切れている ---
-        if name.endswith('...') or name.endswith('…'):
-            return True
-
-        # --- 協会・団体・連盟・財団 ---
-        if re.search(r'協会|連盟|懇話会|連合会|機構$|組合(?!せ)', name):
-            return True
-        if re.search(r'一般社団法人|公益社団法人|一般財団法人|公益財団法人', name):
-            return True
-
-        # --- メディア・出版 ---
-        if re.search(r'^週刊|^日刊|^月刊|新聞社?$|ニュース$|メディア$', name):
-            return True
-
-        # --- 教育・講座 ---
-        if re.search(r'講座|養成|スクール$|アカデミー$|塾$|学校$|学園$', name):
-            return True
-
-        # --- まとめ記事パターン ---
-        if re.search(r'\d+選|厳選|比較|おすすめ|ランキング', name):
-            return True
-
-        # --- キャッチコピーパターン（拡張版） ---
-        if re.search(r'なら.{0,5}$', name):  # 「ならWE」「ならWEB」等もキャッチ
-            return True
-        if re.search(r'をお探し|を志す|を支援する|を実現|をサポート|を提供する', name):
-            return True
-        if '！' in name or '!' in name:
-            return True
-        if '。' in name or '、' in name:  # 句読点が含まれる = 文章
-            return True
-
-        # --- 就活・求人パターン ---
-        if re.search(r'就活|キャリア|新卒|転職|求人|採用', name):
-            return True
-
-        # --- 文章パターン（「〇〇する株式会社」「〇〇を△△する合同会社」） ---
-        corporate_match = re.search(r'(株式会社|有限会社|合同会社|合名会社|合資会社)', name)
-        if corporate_match:
-            pos = corporate_match.start()
-            before_corporate = name[:pos]
-            # 法人格の前に20文字以上の文章がある場合は異常
-            if len(before_corporate) > 20:
-                return True
-            # 法人格の前に動詞的な表現がある場合は異常
-            if re.search(r'する$|から$|へ$|を$|の面から$', before_corporate):
-                return True
-
-        # --- 法人格チェック（最終防衛ライン） ---
-        has_corporate = bool(re.search(
-            r'株式会社|有限会社|合同会社|合名会社|合資会社|'
-            r'Inc\.?|Corp\.?|Co\.?,?\s*Ltd\.?|LLC|LLP|Limited',
-            name, re.IGNORECASE
-        ))
-        if not has_corporate:
-            return True
-
-        return False
 
     def _extract_domain(self, url: str) -> str:
         try:
