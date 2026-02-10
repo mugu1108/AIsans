@@ -13,7 +13,7 @@ import { LogRepository } from './infrastructure/database/repositories/LogReposit
 import { DifyClient } from './infrastructure/dify/DifyClient';
 import { PythonAPIClient } from './infrastructure/python/PythonAPIClient';
 import { WorkflowOrchestrator } from './application/WorkflowOrchestrator';
-import { getEnvConfig, logEnvironmentSummary } from './config/env';
+import { getEnvConfig, logEnvironmentSummary, WorkflowMode } from './config/env';
 import { disconnectPrisma } from './infrastructure/database/prisma';
 import { ConsoleLogger } from './utils/logger';
 import { AIEmployeeNotFoundError } from './utils/errors';
@@ -46,18 +46,23 @@ async function main(): Promise<void> {
     logger.info('Infrastructure層を初期化しています...');
     const difyClient = new DifyClient(env.DIFY_API_URL, env.DIFY_API_KEY, logger);
 
-    // Python API クライアントの初期化（設定されている場合）
-    let pythonClient: PythonAPIClient | undefined;
-    const usePythonAPI = !!env.PYTHON_API_URL && !!env.GAS_WEBHOOK_URL;
+    // ワークフローモードの取得
+    const workflowMode: WorkflowMode = env.WORKFLOW_MODE;
 
-    if (usePythonAPI) {
-      pythonClient = new PythonAPIClient(env.PYTHON_API_URL!, logger);
-      logger.info('Python API モードを有効化しました', {
+    // Python API クライアントの初期化（python/dify_hybridモードで必要）
+    let pythonClient: PythonAPIClient | undefined;
+
+    if (workflowMode === 'python' || workflowMode === 'dify_hybrid') {
+      if (!env.PYTHON_API_URL || !env.GAS_WEBHOOK_URL) {
+        throw new Error(`${workflowMode}モードにはPYTHON_API_URLとGAS_WEBHOOK_URLが必要です`);
+      }
+      pythonClient = new PythonAPIClient(env.PYTHON_API_URL, logger);
+      logger.info(`${workflowMode}モードを有効化しました`, {
         apiUrl: env.PYTHON_API_URL,
         gasWebhookUrl: env.GAS_WEBHOOK_URL,
       });
     } else {
-      logger.info('Dify モードで動作します（Python API未設定）');
+      logger.info('dify_legacyモードで動作します');
     }
 
     // スプレッドシート機能のフォルダID（環境変数から取得）
@@ -81,9 +86,9 @@ async function main(): Promise<void> {
       logger
     );
 
-    // 件数上限（Python API: 500件、Dify: 50件）
-    const MAX_COUNT = usePythonAPI ? 500 : 50;
-    logger.info(`件数上限: ${MAX_COUNT}件`);
+    // 件数上限（python/dify_hybrid: 500件、dify_legacy: 50件）
+    const MAX_COUNT = workflowMode === 'dify_legacy' ? 50 : 500;
+    logger.info(`件数上限: ${MAX_COUNT}件（${workflowMode}モード）`);
 
     // イベントハンドラの登録
     logger.info('イベントハンドラを登録しています...');
@@ -148,12 +153,15 @@ async function main(): Promise<void> {
 
         logger.debug('クエリを抽出', { originalText: event.text, query, targetCount });
 
-        // Python API モードの場合
-        if (usePythonAPI && pythonClient) {
-          logger.info('Python API モードで処理開始', { query, targetCount });
+        // 検索キーワードを抽出（件数部分を除去）
+        const searchKeyword = query.replace(/\d+\s*件/, '').trim();
 
-          // 検索キーワードを抽出（件数部分を除去）
-          const searchKeyword = query.replace(/\d+\s*件/, '').trim();
+        // モードに応じた処理分岐
+        if (workflowMode === 'python' && pythonClient) {
+          // ========================================
+          // Python直接モード（現在のデフォルト）
+          // ========================================
+          logger.info('pythonモードで処理開始', { searchKeyword, targetCount });
 
           const result = await orchestrator.executeSearchJob({
             searchKeyword,
@@ -164,10 +172,8 @@ async function main(): Promise<void> {
           });
 
           if (result.success) {
-            // ジョブ開始成功 - バックグラウンドで処理されるため、Slack通知は不要
             logger.info('Python API ジョブ開始成功', { jobId: result.jobId });
 
-            // 成功ログの記録（ジョブ開始時点）
             await logService.recordExecution({
               aiEmployeeId: employee.id,
               userId: event.userId,
@@ -176,11 +182,10 @@ async function main(): Promise<void> {
               channelId: event.channelId,
               inputKeyword: event.text,
               status: 'success',
-              resultCount: 0, // バックグラウンド処理のため件数は後で更新
+              resultCount: 0,
               processingTimeSeconds: result.processingTimeSeconds,
             });
           } else {
-            // ジョブ開始失敗
             logger.error('Python API ジョブ開始失敗', new Error(result.errorMessage));
 
             await slackAdapter.sendErrorWithRetry(
@@ -189,7 +194,6 @@ async function main(): Promise<void> {
               threadTs
             );
 
-            // エラーログの記録
             await logService.recordExecution({
               aiEmployeeId: employee.id,
               userId: event.userId,
@@ -202,9 +206,66 @@ async function main(): Promise<void> {
               errorMessage: result.errorMessage,
             });
           }
+
+        } else if (workflowMode === 'dify_hybrid') {
+          // ========================================
+          // Difyハイブリッドモード（Dify経由でPython API）
+          // ========================================
+          logger.info('dify_hybridモードで処理開始', { searchKeyword, targetCount });
+
+          const result = await orchestrator.executeHybridWorkflow(searchKeyword, targetCount);
+
+          if (result.success) {
+            logger.info('Dify Hybridワークフロー実行成功', {
+              resultCount: result.resultCount,
+              spreadsheetUrl: result.spreadsheetUrl,
+            });
+
+            let completeMessage = `✅ 完了しました！${result.resultCount}社のリストを作成しました`;
+            if (result.spreadsheetUrl) {
+              completeMessage += `\n\n📊 Googleスプレッドシート:\n${result.spreadsheetUrl}`;
+            }
+
+            await slackAdapter.sendMessage(event.channelId, completeMessage, threadTs);
+
+            await logService.recordExecution({
+              aiEmployeeId: employee.id,
+              userId: event.userId,
+              userName: event.userName,
+              platform: 'slack',
+              channelId: event.channelId,
+              inputKeyword: event.text,
+              status: 'success',
+              resultCount: result.resultCount,
+              processingTimeSeconds: result.processingTimeSeconds,
+            });
+          } else {
+            logger.error('Dify Hybridワークフロー実行失敗', new Error(result.errorMessage));
+
+            await slackAdapter.sendErrorWithRetry(
+              event.channelId,
+              result.errorMessage!,
+              threadTs
+            );
+
+            await logService.recordExecution({
+              aiEmployeeId: employee.id,
+              userId: event.userId,
+              userName: event.userName,
+              platform: 'slack',
+              channelId: event.channelId,
+              inputKeyword: event.text,
+              status: 'error',
+              processingTimeSeconds: result.processingTimeSeconds,
+              errorMessage: result.errorMessage,
+            });
+          }
+
         } else {
-          // Dify モード（従来の同期処理）
-          logger.info('Dify モードで処理開始', { query });
+          // ========================================
+          // Difyレガシーモード（従来のDifyのみ）
+          // ========================================
+          logger.info('dify_legacyモードで処理開始', { query });
 
           // ワークフロー実行（件数はDifyのinput_parseノードでパース）
           // タイムアウト系エラーはリトライしないため、リトライ回数は1に設定
@@ -281,7 +342,7 @@ async function main(): Promise<void> {
         const totalTime = Math.floor((Date.now() - startTime) / 1000);
         logger.info('メンションイベント処理完了', {
           totalTimeSeconds: totalTime,
-          mode: usePythonAPI ? 'python' : 'dify',
+          mode: workflowMode,
         });
       } catch (error) {
         // イベント処理中のエラー
@@ -333,7 +394,7 @@ async function main(): Promise<void> {
     await slackAdapter.start(env.PORT);
 
     logger.info('========================================');
-    logger.info(`🚀 AI-Shineが正常に起動しました！(${usePythonAPI ? 'Python API' : 'Dify'}モード)`);
+    logger.info(`🚀 AI-Shineが正常に起動しました！(${workflowMode}モード)`);
     logger.info('========================================');
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));

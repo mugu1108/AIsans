@@ -211,6 +211,60 @@ export class WorkflowOrchestrator {
   }
 
   /**
+   * Difyハイブリッドモードでワークフローを実行
+   *
+   * Dify経由でPython APIを呼び出し、結果を取得
+   *
+   * @param searchKeyword - 検索キーワード（例: "東京 IT企業"）
+   * @param targetCount - 取得件数
+   * @returns 実行結果
+   */
+  async executeHybridWorkflow(
+    searchKeyword: string,
+    targetCount: number
+  ): Promise<WorkflowExecutionResult> {
+    const startTime = Date.now();
+
+    this.logger.info('Dify Hybridワークフロー実行を開始', {
+      searchKeyword,
+      targetCount,
+    });
+
+    try {
+      const result = await this.difyClient.executeHybridWorkflow(
+        searchKeyword,
+        targetCount
+      );
+
+      this.logger.info('Dify Hybridワークフロー実行完了', {
+        resultCount: result.resultCount,
+        spreadsheetUrl: result.spreadsheetUrl,
+        processingTimeSeconds: this.calculateProcessingTime(startTime),
+      });
+
+      return {
+        success: true,
+        resultCount: result.resultCount,
+        spreadsheetUrl: result.spreadsheetUrl,
+        processingTimeSeconds: this.calculateProcessingTime(startTime),
+      };
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = err.message;
+
+      this.logger.error('Dify Hybridワークフロー実行エラー', err, {
+        searchKeyword,
+      });
+
+      return {
+        success: false,
+        errorMessage,
+        processingTimeSeconds: this.calculateProcessingTime(startTime),
+      };
+    }
+  }
+
+  /**
    * 指数バックオフ付きリトライ
    *
    * @param fn - 実行する関数

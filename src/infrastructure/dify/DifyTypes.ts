@@ -7,9 +7,13 @@ export interface DifyWorkflowRequest {
    */
   inputs: {
     /**
-     * 検索キーワード（例: "東京のIT企業"）
+     * 検索キーワード（レガシーモード用、例: "東京のIT企業"）
      */
-    user_input: string;
+    user_input?: string;
+    /**
+     * 検索キーワード（ハイブリッドモード用、例: "東京 IT企業"）
+     */
+    search_keyword?: string;
     /**
      * 目標件数（任意、デフォルト: 30）
      */
@@ -65,9 +69,21 @@ export interface DifyWorkflowResponse {
      */
     outputs?: {
       /**
-       * CSVデータ（文字列）
+       * CSVデータ（文字列）- レガシーモード用
        */
       summary?: string;
+      /**
+       * 結果件数 - ハイブリッドモード用
+       */
+      result_count?: string;
+      /**
+       * スプレッドシートURL - ハイブリッドモード用
+       */
+      spreadsheet_url?: string;
+      /**
+       * メッセージ - ハイブリッドモード用
+       */
+      message?: string;
     };
 
     /**

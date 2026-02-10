@@ -102,6 +102,83 @@ export class DifyClient {
   }
 
   /**
+   * ハイブリッドモード用ワークフローを実行
+   *
+   * Dify経由でPython APIを呼び出し、結果を取得
+   * Dify側でPython APIの /search_sync を呼び出す設計
+   *
+   * @param searchKeyword - 検索キーワード（例: "東京 IT企業"）
+   * @param targetCount - 取得件数
+   * @param userId - ユーザーID（デフォルト: 'slack-user'）
+   * @returns 検索結果
+   */
+  async executeHybridWorkflow(
+    searchKeyword: string,
+    targetCount: number,
+    userId: string = 'slack-user'
+  ): Promise<{
+    resultCount: number;
+    spreadsheetUrl?: string;
+    message: string;
+  }> {
+    this.logger.debug('Dify Hybrid Workflowを呼び出し中', { searchKeyword, targetCount, userId });
+
+    try {
+      const requestBody: DifyWorkflowRequest = {
+        inputs: {
+          search_keyword: searchKeyword,
+          target_count: targetCount,
+        },
+        response_mode: 'blocking',
+        user: userId,
+      };
+
+      const response = await this.client.post<DifyWorkflowResponse>(
+        '/workflows/run',
+        requestBody
+      );
+
+      const { data } = response.data;
+
+      // ステータスチェック
+      if (data.status === 'failed') {
+        const errorMsg = data.error || 'ワークフロー実行に失敗しました';
+        this.logger.error('Dify Hybrid Workflowが失敗', new Error(errorMsg), {
+          status: data.status,
+          searchKeyword,
+        });
+        throw new DifyAPIError(errorMsg, 500);
+      }
+
+      if (data.status !== 'succeeded') {
+        throw new DifyAPIError(`Dify Workflow未完了: status=${data.status}`, 500);
+      }
+
+      // 出力を取得
+      const outputs = data.outputs || {};
+      const resultCount = parseInt(outputs.result_count || '0', 10);
+      const spreadsheetUrl = outputs.spreadsheet_url || undefined;
+      const message = outputs.message || `${resultCount}件の企業情報を取得しました`;
+
+      this.logger.info('Dify Hybrid Workflow実行完了', {
+        workflowRunId: data.id,
+        resultCount,
+        spreadsheetUrl,
+        elapsedTime: data.elapsed_time,
+      });
+
+      return {
+        resultCount,
+        spreadsheetUrl,
+        message,
+      };
+    } catch (error) {
+      this.handleError(error, searchKeyword);
+      throw error;
+    }
+  }
+
+  /**
    * エラーハンドリング
    *
    * @param error - キャッチされたエラー

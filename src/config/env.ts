@@ -10,6 +10,14 @@
 export type NodeEnvironment = 'development' | 'production' | 'test';
 
 /**
+ * ワークフローモードの型定義
+ * - python: Python API直接呼び出し（現在のデフォルト）
+ * - dify_hybrid: Dify経由でPython APIを呼び出し（LLMで入力解析）
+ * - dify_legacy: 従来のDifyのみモード
+ */
+export type WorkflowMode = 'python' | 'dify_hybrid' | 'dify_legacy';
+
+/**
  * 環境変数の型定義
  */
 export interface EnvironmentVariables {
@@ -32,6 +40,9 @@ export interface EnvironmentVariables {
   // Python Search API
   PYTHON_API_URL?: string;
   GAS_WEBHOOK_URL?: string;
+
+  // ワークフローモード
+  WORKFLOW_MODE: WorkflowMode;
 
   // Google API（任意）
   GOOGLE_SERVICE_ACCOUNT_KEY_PATH?: string;
@@ -114,6 +125,26 @@ function getNodeEnv(): NodeEnvironment {
 }
 
 /**
+ * ワークフローモードを取得・検証
+ *
+ * @returns ワークフローモード
+ */
+function getWorkflowMode(): WorkflowMode {
+  const mode = getEnv('WORKFLOW_MODE', 'python');
+
+  const validModes: WorkflowMode[] = ['python', 'dify_hybrid', 'dify_legacy'];
+
+  if (!validModes.includes(mode as WorkflowMode)) {
+    console.warn(
+      `警告: WORKFLOW_MODE="${mode}" は無効な値です。pythonとして扱います。`
+    );
+    return 'python';
+  }
+
+  return mode as WorkflowMode;
+}
+
+/**
  * ポート番号を取得・検証
  *
  * @returns ポート番号
@@ -161,6 +192,7 @@ function loadEnvironmentVariables(): EnvironmentVariables {
     DIFY_API_KEY: requireEnv('DIFY_API_KEY'),
     PYTHON_API_URL: getEnv('PYTHON_API_URL'),
     GAS_WEBHOOK_URL: getEnv('GAS_WEBHOOK_URL'),
+    WORKFLOW_MODE: getWorkflowMode(),
     GOOGLE_SERVICE_ACCOUNT_KEY_PATH: getEnv('GOOGLE_SERVICE_ACCOUNT_KEY_PATH'),
     GOOGLE_DRIVE_FOLDER_ID: getEnv('GOOGLE_DRIVE_FOLDER_ID'),
     PORT: getPort(),
@@ -209,6 +241,7 @@ export function logEnvironmentSummary(): void {
   console.log(`DIFY_API_KEY:                       ${maskToken(env.DIFY_API_KEY)}`);
   console.log(`PYTHON_API_URL:                     ${env.PYTHON_API_URL || '(未設定)'}`);
   console.log(`GAS_WEBHOOK_URL:                    ${env.GAS_WEBHOOK_URL || '(未設定)'}`);
+  console.log(`WORKFLOW_MODE:                      ${env.WORKFLOW_MODE}`);
   console.log(`GOOGLE_SERVICE_ACCOUNT_KEY_PATH:    ${env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || '(未設定)'}`);
   console.log(`GOOGLE_DRIVE_FOLDER_ID:             ${env.GOOGLE_DRIVE_FOLDER_ID || '(未設定)'}`);
   console.log('========================================');
