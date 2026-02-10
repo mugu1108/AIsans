@@ -25,7 +25,7 @@ class Settings:
     openai_api_key: str
 
     # 検索設定
-    max_target_count: int = 300
+    max_target_count: int = 500
     serper_results_per_query: int = 100
 
     # スクレイピング設定
@@ -45,7 +45,7 @@ class Settings:
             slack_bot_token=slack_bot_token,
             gas_webhook_url=gas_webhook_url,
             openai_api_key=openai_api_key,
-            max_target_count=int(os.environ.get("MAX_TARGET_COUNT", "300")),
+            max_target_count=int(os.environ.get("MAX_TARGET_COUNT", "500")),
             serper_results_per_query=int(os.environ.get("SERPER_RESULTS_PER_QUERY", "100")),
             scrape_concurrent=int(os.environ.get("SCRAPE_CONCURRENT", "10")),
             scrape_timeout=float(os.environ.get("SCRAPE_TIMEOUT", "10.0")),
