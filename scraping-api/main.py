@@ -190,8 +190,10 @@ async def search_sync(request: SearchSyncRequest):
     """
     同期版の検索エンドポイント（Difyワークフロー用）
 
-    検索→スクレイピング→GAS保存を一括で実行し、
+    検索→クレンジング→リトライ→スクレイピング→GAS保存を一括で実行し、
     完了後に結果を返す。
+
+    v2対応: QueryPool方式 + 動的リトライ + スクレイピング後クレンジング
     """
     settings = get_settings()
 
@@ -200,7 +202,7 @@ async def search_sync(request: SearchSyncRequest):
     if not settings.gas_webhook_url:
         raise HTTPException(status_code=500, detail="GAS_WEBHOOK_URL が未設定です")
 
-    max_count = getattr(settings, 'max_target_count', 200)
+    max_count = getattr(settings, 'max_target_count', 500)
     if request.target_count > max_count:
         raise HTTPException(
             status_code=400,
@@ -209,118 +211,37 @@ async def search_sync(request: SearchSyncRequest):
 
     logger.info(f"=== 同期検索開始: {request.search_keyword} ({request.target_count}件) ===")
 
-    serper_client = SerperClient(settings.serper_api_key)
-    gas_client = GASClient(settings.gas_webhook_url)
+    # SearchWorkflowの同期版ロジックを実行
+    from services.search_workflow_sync import run_sync_workflow
 
-    # STEP 1: 既存ドメイン取得
-    existing_domains = await gas_client.get_existing_domains()
-    logger.info(f"既存ドメイン: {len(existing_domains)}件")
+    try:
+        result = await run_sync_workflow(
+            search_keyword=request.search_keyword,
+            target_count=request.target_count,
+            serper_api_key=settings.serper_api_key,
+            gas_webhook_url=settings.gas_webhook_url,
+            openai_api_key=settings.openai_api_key,
+            queries=request.queries,
+        )
 
-    # STEP 2: 検索クエリ生成
-    queries = request.queries or generate_diverse_queries(request.search_keyword)
-    logger.info(f"検索クエリ {len(queries)}件")
+        logger.info(f"=== 同期検索完了: {result['result_count']}件 ===")
 
-    # STEP 3: Serper検索
-    companies = await serper_client.search_companies(
-        queries=queries,
-        target_count=request.target_count,
-        existing_domains=existing_domains,
-    )
-    logger.info(f"検索結果: {len(companies)}件")
-
-    if not companies:
         return SearchSyncResponse(
             status="success",
             search_keyword=request.search_keyword,
             target_count=request.target_count,
-            result_count=0, search_count=0, scrape_count=0, success_count=0,
-            spreadsheet_url="", results=[],
-            message="検索結果が0件でした。キーワードを変更してお試しください。",
+            result_count=result["result_count"],
+            search_count=result["search_count"],
+            scrape_count=result["scrape_count"],
+            success_count=result["result_count"],
+            spreadsheet_url=result["spreadsheet_url"],
+            results=result["results"],
+            message=result["message"],
         )
 
-    # STEP 3.5: LLMクレンジング（企業名正規化＋非企業サイト除外）
-    if settings.openai_api_key:
-        logger.info(f"LLMクレンジング開始: {len(companies)}件")
-        from services.llm_cleanser import LLMCleanser
-        from models.search import CompanyData
-        cleanser = LLMCleanser(settings.openai_api_key)
-        companies_dict = [
-            {"company_name": c.company_name, "url": c.url, "domain": c.domain}
-            for c in companies
-        ]
-        try:
-            # Dify仕様準拠: 企業HP以外を除外し、企業名を正規化
-            cleansed = await cleanser.cleanse_companies(
-                companies_dict,
-                search_keyword=request.search_keyword,
-            )
-            original_count = len(companies)
-            # クレンジング結果でcompaniesを更新（有効な企業のみ残る）
-            companies = [
-                CompanyData(
-                    company_name=c["company_name"],
-                    url=c["url"],
-                    domain=c["domain"],
-                )
-                for c in cleansed
-            ]
-            excluded_count = original_count - len(companies)
-            logger.info(f"LLMクレンジング完了: {original_count}件 → {len(companies)}件（{excluded_count}件除外）")
-        except Exception as e:
-            logger.warning(f"LLMクレンジングエラー（スキップ）: {e}")
-    else:
-        logger.warning("LLMクレンジングスキップ: OPENAI_API_KEYが設定されていません")
-
-    # STEP 4: スクレイピング
-    companies_for_scrape = [
-        {"company_name": c.company_name, "url": c.url}
-        for c in companies
-    ]
-    scraped_results = await scrape_companies(companies_for_scrape)
-    successful_results = [r for r in scraped_results if r.contact_url or r.phone]
-    logger.info(f"スクレイピング完了: {len(scraped_results)}件中 {len(successful_results)}件成功")
-
-    # STEP 5: GAS保存
-    companies_to_save = [
-        {
-            "company_name": r.company_name,
-            "base_url": r.base_url,
-            "contact_url": r.contact_url,
-            "phone": r.phone,
-            "domain": r.domain,
-        }
-        for r in successful_results
-    ]
-
-    spreadsheet_url = ""
-    if companies_to_save:
-        try:
-            gas_response = await gas_client.save_results(
-                companies=companies_to_save,
-                search_keyword=request.search_keyword,
-            )
-            spreadsheet_url = gas_response.get("spreadsheet_url", "")
-        except Exception as e:
-            logger.error(f"GAS保存エラー（結果は返却）: {e}")
-
-    message = f"検索完了: {len(successful_results)}件の企業情報を取得しました。"
-    if spreadsheet_url:
-        message += f"\nスプレッドシート: {spreadsheet_url}"
-
-    logger.info(f"=== 同期検索完了: {len(successful_results)}件 ===")
-
-    return SearchSyncResponse(
-        status="success",
-        search_keyword=request.search_keyword,
-        target_count=request.target_count,
-        result_count=len(successful_results),
-        search_count=len(companies),
-        scrape_count=len(scraped_results),
-        success_count=len(successful_results),
-        spreadsheet_url=spreadsheet_url,
-        results=companies_to_save,
-        message=message,
-    )
+    except Exception as e:
+        logger.exception(f"同期検索エラー: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/search", response_model=SearchJobResponse)
