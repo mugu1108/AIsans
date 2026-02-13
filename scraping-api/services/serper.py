@@ -552,7 +552,7 @@ class SerperClient:
 
                 start = page * 100
                 try:
-                    results = await self.search(query, num=100, start=start)
+                    results = await self.search(query, num=10, start=start)
                 except Exception as e:
                     logger.warning(f"検索エラー (query={query}, page={page}): {e}")
                     break
