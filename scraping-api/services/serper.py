@@ -337,8 +337,8 @@ def generate_retry_queries(
     pool = _query_pools[keyword]
     pool.mark_used(used_queries)
 
-    # バッチサイズ: ラウンドが進むほど少なめに（効率化）
-    batch_size = max(8, 20 - round_num * 2)
+    # バッチサイズ: 最低20クエリ/ラウンドを確保（後半でも十分な結果を得るため）
+    batch_size = max(20, 30 - round_num)
     queries = pool.get_batch(batch_size)
 
     logger.info(f"リトライクエリ生成(round={round_num}): {len(queries)}個取得"
