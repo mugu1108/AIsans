@@ -529,7 +529,7 @@ class SerperClient:
         queries: list[str],
         target_count: int,
         existing_domains: Optional[set[str]] = None,
-        max_pages_per_query: int = 1,
+        max_pages_per_query: int = 2,
     ) -> list[CompanyData]:
         """
         複数クエリで企業を検索し、重複除去して返す
@@ -552,7 +552,7 @@ class SerperClient:
 
                 start = page * 100
                 try:
-                    results = await self.search(query, num=50, start=start)
+                    results = await self.search(query, num=100, start=start)
                 except Exception as e:
                     logger.warning(f"検索エラー (query={query}, page={page}): {e}")
                     break
