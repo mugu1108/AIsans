@@ -202,8 +202,8 @@ class SearchWorkflow:
         target_count = int(job.target_count * self.SCRAPING_BUFFER)
         logger.info(f"検索目標: {job.target_count}件 → バッファ込み{target_count}件")
 
-        # ★リトライ回数を制限（クレジット消費を抑える）
-        max_retries = min(5, max(3, job.target_count // 50))
+        # ★リトライ回数: 目標件数に応じて動的に設定（500件なら最大15回）
+        max_retries = min(15, max(5, job.target_count // 30))
         logger.info(f"最大リトライ回数: {max_retries}回")
 
         all_cleansed = []
