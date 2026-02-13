@@ -175,8 +175,8 @@ async def _search_with_retry(
     buffered_target = int(target_count * SCRAPING_BUFFER)
     logger.info(f"検索目標: {target_count}件 → バッファ込み{buffered_target}件")
 
-    # リトライ回数: 目標件数に応じて動的に設定（500件なら最大15回）
-    max_retries = min(15, max(5, target_count // 30))
+    # リトライ回数: 目標件数に応じて動的に設定（500件なら最大25回）
+    max_retries = min(25, max(10, target_count // 20))
     logger.info(f"最大リトライ回数: {max_retries}回")
 
     all_cleansed: list[CompanyData] = []
