@@ -529,7 +529,7 @@ class SerperClient:
         queries: list[str],
         target_count: int,
         existing_domains: Optional[set[str]] = None,
-        max_pages_per_query: int = 2,
+        max_pages_per_query: int = 1,
     ) -> list[CompanyData]:
         """
         複数クエリで企業を検索し、重複除去して返す
